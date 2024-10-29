@@ -1,0 +1,3 @@
+[submodule "llm-multimodal/LaVy"]
+	path = llm-multimodal/LaVy
+	url = https://github.com/baochi0212/LaVy
