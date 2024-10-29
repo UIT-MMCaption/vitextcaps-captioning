@@ -20,10 +20,7 @@ pip isntall -r requirements.txt
 
 1. **Prepare your images**: Place all images you want to caption in a single folder. Supported formats are `.jpg`, and `.png`.
 
-2. **Run the script**: Use the following command to run the script, replacing `<folder_path>`, `<output_file>`, and `<max_new_tokens>` with your desired values.
-
-bash
-python llm-multimodal/blip2.py <folder_path> <output_file> <max_new_tokens>
+2. **Run the script**: Use the following command to run the script, replacing `<image_path>`, `<ocr_path>`, `<ocr>` and `<save_name>` with your desired values.
 
 
 - `<image_path>`: Path to the folder containing images.
