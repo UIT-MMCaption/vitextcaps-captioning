@@ -1,4 +1,3 @@
-
 from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
 import torch
 from PIL import Image
@@ -31,14 +30,19 @@ def main():
 
         conversation = [
             {
-
-              "role": "user",
-              "content": [
-                  {"type": "text", "text": "Bạn là chuyên gia phân tích hình ảnh và nhận dạng văn bản. Nhiệm vụ là tạo chú thích chi tiết, ưu tiên diễn giải văn bản trong ảnh. Hãy xác định đối tượng, màu sắc, bố cục và quét toàn bộ văn bản để hiểu vai trò và mối liên hệ với hình ảnh. Kết hợp các yếu tố này để viết chú thích ngắn, độ dài 1 câu, rõ ràng và chính xác, nhấn mạnh ý nghĩa của văn bản. Nếu văn bản bị che khuất hoặc khó đọc, hãy ghi chú và phỏng đoán. Đảm bảo chú thích phản ánh đúng bối cảnh hình ảnh khi cần."},
-                   {"type": "image"},
-                ],
+              "role": "system",  
+              "content": "Bạn là chuyên gia phân tích hình ảnh và nhận dạng văn bản. Nhiệm vụ là tạo chú thích chi tiết, ưu tiên diễn giải văn bản trong ảnh. Hãy xác định đối tượng, màu sắc, bố cục và quét toàn bộ văn bản để hiểu vai trò và mối liên hệ với hình ảnh. Kết hợp các yếu tố này để viết chú thích ngắn, độ dài 1 câu, rõ ràng và chính xác, nhấn mạnh ý nghĩa của văn bản. Nếu văn bản bị che khuất hoặc khó đọc, hãy ghi chú và phỏng đoán. Đảm bảo chú thích phản ánh đúng bối cảnh hình ảnh khi cần."
             },
+            {
+              "role": "user",  
+              "content": "Vui lòng mô tả hình ảnh dưới đây."
+            },
+            {
+              "role": "assistant",  
+              "content": "Chú thích hình ảnh sẽ được tạo ra ở đây."
+            }
         ]
+
         prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
 
         inputs = processor(images=image, text=prompt, return_tensors="pt").to("cuda:0")
@@ -53,4 +57,4 @@ def main():
     df.to_csv(args.output_file, index=False)
 
 if __name__ == "__main__":
-    main()  
+    main()
