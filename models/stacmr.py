@@ -79,7 +79,7 @@ class VSRN(nn.Module):
         ocr_rec_features = item.ocr_rec_features.to(self.config.DEVICE)
         ocr_det_features = item.ocr_det_features.to(self.config.DEVICE)
         caption_tokens = item.answer_tokens.squeeze().to(self.config.DEVICE)
-        caption_masks = item.answer_masks.squeeze().to(self.config.DEVICE)
+        caption_masks = item.answer_masks.squeeze(1).to(self.config.DEVICE)
 
         B, _ = caption_masks.shape
         temp = np.zeros(B)
