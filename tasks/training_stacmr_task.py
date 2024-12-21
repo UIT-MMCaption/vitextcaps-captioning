@@ -194,7 +194,8 @@ class TrainingStacMR(OpenEndedTask):
                 answers_gen = self.tokenizer.batch_decode(outs,
                                                           skip_special_tokens=True)
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
-                    gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
+                    words = gen_i.split()
+                    gen_i = ' '.join([k for k, g in itertools.groupby(words)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
                     gts['%d_%d' % (it, i)] = gts_i
                 pbar.update()
@@ -312,7 +313,8 @@ class TrainingStacMR(OpenEndedTask):
                 gts = {}
                 gens = {}
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
-                    gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
+                    words = gen_i.split()
+                    gen_i = ' '.join([k for k, g in itertools.groupby(words)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
                     gts['%d_%d' % (it, i)] = gts_i
                     overall_gens['%d_%d' % (it, i)] = [gen_i, ]
