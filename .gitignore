@@ -14,5 +14,6 @@ examine*
 statistic.ipynb
 test.ipynb
 test.py
-
+test_stacmr.py
+test_mma_sr.py
 *.zip

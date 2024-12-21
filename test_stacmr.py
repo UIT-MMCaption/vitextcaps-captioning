@@ -1,5 +1,5 @@
 from models.stacmr import VSRN
-from data_utils.datasets.vitextcap_dataset import ViTextCapsDataset
+from data_utils.datasets.vitextcap_dataset import ViTCFeatureDataset
 import pickle
 from configs.utils import get_config
 from builders.vocab_builder import build_vocab
@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 from data_utils.utils import collate_fn
 
-config = get_config('vitextcaps-captioning\configs\stacmr.yaml')
+config = get_config('configs/stacmr.yaml')
 vocab = build_vocab(config.DATASET.VOCAB)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -16,7 +16,7 @@ model = VSRN(config.MODEL, vocab)
 model.to(device)
 # print(model)
 
-train_data = ViTextCapsDataset(json_path='D:\\Research\\OpenViVQA\data\\vitextcaps_dev.json',
+train_data = ViTCFeatureDataset(json_path='D:\\Research\\OpenViVQA\\data\\vitextcaps_dev.json',
                                vocab=vocab,
                                config=config.DATASET)
 train_loader = DataLoader(train_data,
