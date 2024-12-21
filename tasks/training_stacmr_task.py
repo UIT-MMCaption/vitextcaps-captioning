@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn import NLLLoss
+from torch.utils.data import DataLoader
+from data_utils.utils import collate_fn
 
 from utils.logging_utils import setup_logger
 from tasks.open_ended_task import OpenEndedTask
@@ -116,6 +118,28 @@ class TrainingStacMR(OpenEndedTask):
         self.crit.to(self.device)
         self.criterion.to(self.device)
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+    
+    def create_dict_dataloaders(self, config):
+        # creating dictionary iterable-dataset data loader
+        self.train_dict_dataloader = DataLoader(
+            dataset=self.train_dict_dataset,
+            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.TRAINING_BEAM_SIZE,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
+
+        self.dev_dict_dataloader = DataLoader(
+            dataset=self.dev_dict_dataset,
+            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.EVALUATING_BEAM_SIZE,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
+        self.test_dict_dataloader = DataLoader(
+            dataset=self.test_dict_dataset,
+            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
 
     def evaluate_loss(self, dataloader):
         self.model.eval()
