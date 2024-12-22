@@ -240,7 +240,7 @@ class TrainingStacMR(OpenEndedTask):
 
     def start(self):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
-            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"), weights_only=True)
+            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
             best_val_score = checkpoint["best_val_score"]
             patience = checkpoint["patience"]
             self.epoch = checkpoint["epoch"] + 1
