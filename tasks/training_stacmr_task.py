@@ -4,6 +4,7 @@ from torch.nn import functional as F
 from torch.nn import NLLLoss
 from torch.utils.data import DataLoader
 from data_utils.utils import collate_fn
+from torch.nn.utils import clip_grad_norm_
 
 from utils.logging_utils import setup_logger
 from tasks.open_ended_task import OpenEndedTask
@@ -117,6 +118,7 @@ class TrainingStacMR(OpenEndedTask):
 
         self.crit.to(self.device)
         self.criterion.to(self.device)
+        self.grad_clip = config.TRAINING.GRAD_CLIP
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
     
     def create_dict_dataloaders(self, config):
@@ -230,6 +232,9 @@ class TrainingStacMR(OpenEndedTask):
                 
                 loss.backward()
 
+                if self.grad_clip > 0:
+                    clip_grad_norm_(self.model.parameters(), self.grad_clip)
+                    
                 self.optim.step()
                 this_loss = loss.item()
                 running_loss += this_loss
