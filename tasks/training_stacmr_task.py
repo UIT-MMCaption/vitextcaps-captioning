@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn import NLLLoss
+from torch.nn import NLLLoss, CrossEntropyLoss
 from torch.utils.data import DataLoader
 from data_utils.utils import collate_fn
 from torch.nn.utils import clip_grad_norm_
@@ -27,7 +27,7 @@ class LanguageModelCriterion(nn.Module):
 
     def __init__(self):
         super(LanguageModelCriterion, self).__init__()
-        self.loss_fn = nn.NLLLoss(reduce=False)
+        self.loss_fn = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, logits, target, mask):
         """
