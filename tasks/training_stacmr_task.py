@@ -36,16 +36,15 @@ class LanguageModelCriterion(nn.Module):
         mask: shape of (N, seq_len)
         """
         # truncate to the same size
-        batch_size = logits.shape[0]
         target = target[:, :logits.shape[1]]
         mask = mask[:, :logits.shape[1]]
         logits = logits.contiguous().view(-1, logits.shape[2])
         target = target.contiguous().view(-1)
         mask = mask.contiguous().view(-1)
         loss = self.loss_fn(logits, target)
-        output = torch.sum(loss * mask) / batch_size
+        masked_loss = loss * mask
+        output = masked_loss.sum() / mask.sum()  # Average over actual tokens
         return output
-
 
 class ContrastiveLoss(nn.Module):
     """

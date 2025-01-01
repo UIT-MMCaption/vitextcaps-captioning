@@ -18,16 +18,16 @@ model.to(device)
 
 train_data = ViTCFeatureDataset(json_path='D:\\Research\\OpenViVQA\\data\\vitextcaps_dev.json',
                                vocab=vocab,
-                               config=config.DATASET.FEATURE)
+                               config=config.DATASET.FEATURE_DATASET)
 train_loader = DataLoader(train_data,
                           batch_size=2,
                           shuffle=True,
                           collate_fn=collate_fn)
 sample = next(iter(train_loader))
-model.eval()
-with torch.no_grad():
-    output = model(sample, mode='inference')
-print(output['scores'].shape)
-print(output['GCN_img_emd'].shape)
+# model.eval()
+# with torch.no_grad():
+#     output = model(sample, mode='inference')
+# print(output['scores'].shape)
+print(sample.key())
 # print(output['scores'].argmax(dim=-1))
 # print(output['predicted_token'])

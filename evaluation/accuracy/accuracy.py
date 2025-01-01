@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Accuracy:
     def compute_score(self, gts, res):
         """
