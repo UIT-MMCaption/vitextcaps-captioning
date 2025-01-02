@@ -20,7 +20,7 @@ import json
 
 from torch.autograd import Variable
 
-logger = setup_logger()
+logger = setup_logger(output='stacmr.log')
 
 
 class LanguageModelCriterion(nn.Module):
