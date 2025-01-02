@@ -1,130 +1,129 @@
-TASK: TrainingStacMR  
+TASK: TrainingStacMR
 
 DATASET:
 
-  FEATURE_DATASET:
-    TYPE: ViTCFeatureDataset
-    BATCH_SIZE: 64
-    WORKERS: 0
-    FEATURE_PATH:
-      FEATURES: D:\Research\vitextcaps-captioning\data\vinvl_vinvl
-      SCENE_TEXT: D:\Research\vitextcaps-captioning\data\swintextspotter
-      FASTTEXT: D:\Research\vitextcaps-captioning\data\fasttext
-      IMAGE: null
-    SCENE_TEXT_THRESHOLD: 0.0
-    MAX_SCENE_TEXT: 100
-    WORD_EMBEDDING: ViFastText
-    WORD_EMBEDDING_CACHE: null
-    TOKENIZER:
-      PRETRAINED_NAME: vit5-base
-      PADDING_INDEX: 0
-  DICT_DATASET:
-    TYPE: ViTCDictionaryDataset
-    BATCH_SIZE: 64
-    WORKERS: 0 
-    FEATURE_PATH:
-      FEATURES: D:\Research\vitextcaps-captioning\data\vinvl_vinvl
-      SCENE_TEXT: D:\Research\vitextcaps-captioning\data\swintextspotter
-      FASTTEXT: D:\Research\vitextcaps-captioning\data\fasttext
-      IMAGE: null
-    SCENE_TEXT_THRESHOLD: 0.0
-    MAX_SCENE_TEXT: 100
-    WORD_EMBEDDING: ViFastText
-    WORD_EMBEDDING_CACHE: null
-    TOKENIZER:
-      PRETRAINED_NAME: vit5-base
-      PADDING_INDEX: 0
-  MIN_FREQ: 1
-  VOCAB:
-    TYPE: OcrVocab
-    TOKENIZER: null
-    WORD_EMBEDDING: null
-    WORD_EMBEDDING_CACHE: null
+    FEATURE_DATASET:
+        TYPE: ViTCFeatureDataset
+        BATCH_SIZE: 64
+        WORKERS: 0
+        FEATURE_PATH:
+            FEATURES: data\vinvl_vinvl
+            SCENE_TEXT: data\swintextspotter
+            FASTTEXT: data\fasttext
+            IMAGE: null
+        SCENE_TEXT_THRESHOLD: 0.0
+        MAX_SCENE_TEXT: 100
+        WORD_EMBEDDING: ViFastText
+        WORD_EMBEDDING_CACHE: null
+        TOKENIZER:
+            PRETRAINED_NAME: vit5-base
+            PADDING_INDEX: 0
+    DICT_DATASET:
+        TYPE: ViTCDictionaryDataset
+        BATCH_SIZE: 64
+        WORKERS: 0
+        FEATURE_PATH:
+            FEATURES: data\vinvl_vinvl
+            SCENE_TEXT: data\swintextspotter
+            FASTTEXT: data\fasttext
+            IMAGE: null
+        SCENE_TEXT_THRESHOLD: 0.0
+        MAX_SCENE_TEXT: 100
+        WORD_EMBEDDING: ViFastText
+        WORD_EMBEDDING_CACHE: null
+        TOKENIZER:
+            PRETRAINED_NAME: vit5-base
+            PADDING_INDEX: 0
     MIN_FREQ: 1
-    BOS_TOKEN: <bos>
-    EOS_TOKEN: <eos>
-    PAD_TOKEN: <pad>
-    UNK_TOKEN: <unk>
-    IMG_TOKEN: <img>
-    FEAT_TOKEN: <feat>
-    BOX_TOKEN: <box>
-    OCR_TOKEN: <ocr>
-    OCR_DET_TOKEN: <ocr_det>
-    OCR_REC_TOKEN: <ocr_rec>
-    QUESTION_TOKEN: <question>
-    ANSWER_TOKEN: <answer>
+    VOCAB:
+        TYPE: OcrVocab
+        TOKENIZER: null
+        WORD_EMBEDDING: null
+        WORD_EMBEDDING_CACHE: null
+        MIN_FREQ: 1
+        BOS_TOKEN: <bos>
+        EOS_TOKEN: <eos>
+        PAD_TOKEN: <pad>
+        UNK_TOKEN: <unk>
+        IMG_TOKEN: <img>
+        FEAT_TOKEN: <feat>
+        BOX_TOKEN: <box>
+        OCR_TOKEN: <ocr>
+        OCR_DET_TOKEN: <ocr_det>
+        OCR_REC_TOKEN: <ocr_rec>
+        QUESTION_TOKEN: <question>
+        ANSWER_TOKEN: <answer>
+        JSON_PATH:
+            TRAIN: data\vitextcaps_train.json
+            DEV: data\vitextcaps_dev.json
+            TEST: data\vitextcaps_test.json
     JSON_PATH:
-      TRAIN: D:\Research\vitextcaps-captioning\data\vitextcaps_train.json
-      DEV: D:\Research\vitextcaps-captioning\data\vitextcaps_dev.json
-      TEST: D:\Research\vitextcaps-captioning\data\vitextcaps_test.json
-  JSON_PATH:
-    TRAIN: D:\Research\vitextcaps-captioning\data\vitextcaps_train.json
-    DEV: D:\Research\vitextcaps-captioning\data\vitextcaps_dev.json
-    TEST: D:\Research\vitextcaps-captioning\data\vitextcaps_test.json
-
+        TRAIN: data\vitextcaps_train.json
+        DEV: data\vitextcaps_dev.json
+        TEST: data\vitextcaps_test.json
 TRAINING:
-  CHECKPOINT_PATH: saved_models
-  LEARNING_RATE: 0.001
-  GRAD_CLIP: 2.
-  RL_LEARNING_RATE: 0.000005
-  WARMUP: 10000
-  SCORE: CIDEr
-  TRAINING_BEAM_SIZE: 1
-  EVALUATING_BEAM_SIZE: 1
-  PATIENCE: 5
+    CHECKPOINT_PATH: /content/drive/MyDrive/ViTextCaps/checkpoints
+    LEARNING_RATE: 0.0002
+    GRAD_CLIP: 1.
+    RL_LEARNING_RATE: 0.000005
+    WARMUP: 10000
+    SCORE: CIDEr
+    TRAINING_BEAM_SIZE: 1
+    EVALUATING_BEAM_SIZE: 1
+    PATIENCE: 10
 
 MODEL:
-  ARCHITECTURE: VSRN
-  NAME: stacmr_vinvl_swintestspotter
-  DEVICE: cuda
-  D_MODEL: 768
-  INPUT_DROPOUT_P: 0.2
-
-  OBJECT_EMBEDDING:
-    D_FEATURE: 2048
-    DROPOUT: .1
-
-  BOX_EMBEDDING:
-    ARCHITECTURE: FeatureEmbedding
+    ARCHITECTURE: VSRN
+    NAME: stacmr_vinvl_swintestspotter
     DEVICE: cuda
-    D_FEATURE: 4
     D_MODEL: 768
-    DROPOUT: .1
+    INPUT_DROPOUT_P: 0.2
 
-  OCR_TEXT_EMBEDDING:
-    WORD_EMBEDDING: ViFastText
-    WORD_EMBEDDING_CACHE: null
+    OBJECT_EMBEDDING:
+        D_FEATURE: 2048
+        DROPOUT: .1
 
-  OCR_EMBEDDING:
-    D_FEATURE: 812 # 256 (det features) + 256 (rec features) + 300 (fasttext)
-    DROPOUT: .1
+    BOX_EMBEDDING:
+        ARCHITECTURE: FeatureEmbedding
+        DEVICE: cuda
+        D_FEATURE: 4
+        D_MODEL: 768
+        DROPOUT: .1
 
-  CLASSIFIER:
-    OCR_MAX_NUM: 50
-    MAX_LEN: 60
-    VOCAB_SIZE: 36096 # mbert vocab size
+    OCR_TEXT_EMBEDDING:
+        WORD_EMBEDDING: ViFastText
+        WORD_EMBEDDING_CACHE: null
 
-  TEXT_EMBEDDING:
-    ARCHITECTURE: UsualEmbedding
-    DEVICE: cuda
-    D_EMBEDDING: 300
-    D_MODEL: 768
-    DROPOUT: .1
-    WORD_EMBEDDING: null
-    WORD_EMBEDDING_CACHE: null  
+    OCR_EMBEDDING:
+        D_FEATURE: 812 # 256 (det features) + 256 (rec features) + 300 (fasttext)
+        DROPOUT: .1
 
-  RNN:
-    NUM_LAYERS: 1
-    RNN_TYPE: 'gru'
-    BIDIRECTIONAL: False
-    RNN_DROPOUT_P: 0.5
-  
-  LOSS_FN:
-    MARGIN: 0.2
-    MEASURE: cosine
-    MAX_VIOLATION: True
-  
-  ENCODER:
-    NO_IMGNORM: True
-    USE_ABS: True
+    CLASSIFIER:
+        OCR_MAX_NUM: 50
+        MAX_LEN: 60
+        VOCAB_SIZE: 36096 # mbert vocab size
+
+    TEXT_EMBEDDING:
+        ARCHITECTURE: UsualEmbedding
+        DEVICE: cuda
+        D_EMBEDDING: 300
+        D_MODEL: 768
+        DROPOUT: .1
+        WORD_EMBEDDING: null
+        WORD_EMBEDDING_CACHE: null
+
+    RNN:
+        NUM_LAYERS: 1
+        RNN_TYPE: 'gru'
+        BIDIRECTIONAL: False
+        RNN_DROPOUT_P: 0.5
+
+    LOSS_FN:
+        MARGIN: 0.2
+        MEASURE: cosine
+        MAX_VIOLATION: True
+
+    ENCODER:
+        NO_IMGNORM: True
+        USE_ABS: True
 REMOVE_UNK_IN_PRED: True
