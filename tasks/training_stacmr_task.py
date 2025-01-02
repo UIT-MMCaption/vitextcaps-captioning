@@ -228,7 +228,8 @@ class TrainingStacMR(OpenEndedTask):
                 
                 retrieval_loss = self.criterion(img_emb, cap_emb)
                 
-                loss = 2.0 * retrieval_loss + caption_loss
+                # loss = 2.0 * retrieval_loss + caption_loss
+                loss = caption_loss
                 
                 loss.backward()
 
