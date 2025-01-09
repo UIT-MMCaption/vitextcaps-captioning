@@ -64,6 +64,7 @@ DATASET:
 TRAINING:
     CHECKPOINT_PATH: /content/drive/MyDrive/ViTextCaps/checkpoints
     LEARNING_RATE: 0.0001
+    LR_UPDATE: 15
     GRAD_CLIP: 1.
     RL_LEARNING_RATE: 0.000005
     WARMUP: 10000

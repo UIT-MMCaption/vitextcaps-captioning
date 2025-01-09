@@ -109,6 +109,7 @@ def order_sim(im, s):
 class TrainingStacMR(OpenEndedTask):
     def __init__(self, config):
         super().__init__(config)
+        self.config = config
         self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
         self.crit = LanguageModelCriterion()
         self.criterion = ContrastiveLoss(margin=config.MODEL.LOSS_FN.MARGIN,
@@ -119,6 +120,13 @@ class TrainingStacMR(OpenEndedTask):
         self.criterion.to(self.device)
         self.grad_clip = config.TRAINING.GRAD_CLIP
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+    
+    def adjust_learning_rate(self, optimizer, epoch):
+        """Sets the learning rate to the initial LR
+        decayed by 10 every 30 epochs"""
+        lr = self.config.TRAINING.LEARNING_RATE * (0.1 ** (epoch // self.config.TRAINING.LR_UPDATE))
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
     
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
@@ -211,6 +219,7 @@ class TrainingStacMR(OpenEndedTask):
         running_loss = .0
         with tqdm(desc='Epoch %d - Training with cross-entropy loss' % self.epoch, unit='it', total=len(self.train_dataloader)) as pbar:
             for it, items in enumerate(self.train_dataloader):
+                self.adjust_learning_rate(self.optim, self.epoch)
                 items = items.to(self.device)
                 results = self.model(items, mode='train')
                 seq_probs = results["scores"].contiguous()
@@ -242,7 +251,7 @@ class TrainingStacMR(OpenEndedTask):
 
                 pbar.set_postfix(loss=running_loss / (it + 1))
                 pbar.update()
-                self.scheduler.step()
+                # self.scheduler.step()
 
     def start(self):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
