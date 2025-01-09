@@ -27,7 +27,7 @@ class LanguageModelCriterion(nn.Module):
 
     def __init__(self):
         super(LanguageModelCriterion, self).__init__()
-        self.loss_fn = nn.NLLLoss(reduce=False)
+        self.loss_fn = nn.NLLLoss(reduce='none')
 
     def forward(self, logits, target, mask):
         """
@@ -219,7 +219,7 @@ class TrainingStacMR(OpenEndedTask):
         running_loss = .0
         with tqdm(desc='Epoch %d - Training with cross-entropy loss' % self.epoch, unit='it', total=len(self.train_dataloader)) as pbar:
             for it, items in enumerate(self.train_dataloader):
-                self.adjust_learning_rate(self.optim, self.epoch)
+                # self.adjust_learning_rate(self.optim, self.epoch)
                 items = items.to(self.device)
                 results = self.model(items, mode='train')
                 seq_probs = results["scores"].contiguous()
@@ -251,7 +251,7 @@ class TrainingStacMR(OpenEndedTask):
 
                 pbar.set_postfix(loss=running_loss / (it + 1))
                 pbar.update()
-                # self.scheduler.step()
+                self.scheduler.step()
 
     def start(self):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):

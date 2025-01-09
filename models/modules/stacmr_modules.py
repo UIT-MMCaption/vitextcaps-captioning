@@ -211,7 +211,7 @@ class DecoderRNN(nn.Module):
                     self.out(decoder_output.squeeze(1)), dim=1)
 
             seq_logprobs = torch.cat(seq_logprobs, 1)
-            seq_preds = torch.cat(seq_preds[1:], 1)
+            seq_preds = torch.cat(seq_preds, 1)
 
         return seq_logprobs, seq_preds
 
