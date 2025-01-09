@@ -27,7 +27,7 @@ class LanguageModelCriterion(nn.Module):
 
     def __init__(self):
         super(LanguageModelCriterion, self).__init__()
-        self.loss_fn = nn.CrossEntropyLoss(reduction='none')
+        self.loss_fn = nn.NLLLoss(reduce=False)
 
     def forward(self, logits, target, mask):
         """
