@@ -197,7 +197,7 @@ class TrainingStacMR(OpenEndedTask):
             for it, items in enumerate(dataloader):
                 items = items.to(self.device)
                 with torch.no_grad():
-                    results = self.model(items, mode='inference')
+                    results = self.model(items)
                 outs = results["predicted_token"]
 
                 answers_gt = items.answers
@@ -221,7 +221,7 @@ class TrainingStacMR(OpenEndedTask):
             for it, items in enumerate(self.train_dataloader):
                 # self.adjust_learning_rate(self.optim, self.epoch)
                 items = items.to(self.device)
-                results = self.model(items, mode='train')
+                results = self.model(items)
                 seq_probs = results["scores"].contiguous()
                 img_emb = results['img_emb']
                 cap_emb = results['cap_emb']
@@ -319,7 +319,7 @@ class TrainingStacMR(OpenEndedTask):
             for it, items in enumerate(self.test_dict_dataloader):
                 items = items.to(self.device)
                 with torch.no_grad():
-                    result = self.model(items, mode='inference')
+                    result = self.model(items)
                 outs = result["predicted_token"]
 
                 answers_gt = items.answers

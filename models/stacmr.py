@@ -68,9 +68,7 @@ class VSRN(nn.Module):
         if torch.cuda.is_available():
             self.caption_model.cuda()
 
-    def forward(self,
-                item,
-                mode='train'):
+    def forward(self, item):
 
         obj_boxes = item.region_boxes.squeeze().to(self.config.DEVICE)
         obj_features = item.region_features.to(self.config.DEVICE)
@@ -96,10 +94,10 @@ class VSRN(nn.Module):
 
         img_emb, GCN_img_emd = self.img_enc(objects, ocrs)
 
-        if mode == 'train':
+        if self.training:
             seq_probs, predicted_token = self.caption_model(vid_feats=GCN_img_emd,
                                                             target_variable=caption_tokens,
-                                                            mode=mode)
+                                                            mode="train")
             out = {
                 'img_emb': img_emb,
                 'cap_emb': cap_emb,
@@ -107,10 +105,10 @@ class VSRN(nn.Module):
                 'GCN_img_emd': GCN_img_emd
             }
 
-        if mode == 'inference':
+        else:
             seq_probs, predicted_token = self.caption_model(vid_feats=GCN_img_emd,
                                                             target_variable=None,
-                                                            mode=mode)
+                                                            mode="inference")
             out = {'img_emb': img_emb,
                    'cap_emb': cap_emb,
                    'scores': seq_probs,

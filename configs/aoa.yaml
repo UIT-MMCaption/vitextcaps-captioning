@@ -3,7 +3,7 @@ TASK: TrainingStacMR
 DATASET:
 
     FEATURE_DATASET:
-        TYPE: OcrFeatureDataset
+        TYPE: ViTCFeatureDataset
         BATCH_SIZE: 64
         WORKERS: 0
         FEATURE_PATH:
@@ -19,7 +19,7 @@ DATASET:
             PRETRAINED_NAME: vit5-base
             PADDING_INDEX: 0
     DICT_DATASET:
-        TYPE: OcrDictionaryDataset
+        TYPE: ViTCFeatureDataset
         BATCH_SIZE: 64
         WORKERS: 0
         FEATURE_PATH:
@@ -74,7 +74,7 @@ TRAINING:
     PATIENCE: 10
 
 MODEL:
-    ARCHITECTURE: AoA
+    ARCHITECTURE: AoA_Model
     NAME: aoa_vinvl_swintestspotter
     DEVICE: cuda
     D_MODEL: 2048

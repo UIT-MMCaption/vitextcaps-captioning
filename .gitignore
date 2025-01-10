@@ -9,6 +9,7 @@ annotations
 __pycache__
 
 *.json
+*.log
 examine*
 
 statistic.ipynb

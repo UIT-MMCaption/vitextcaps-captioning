@@ -105,7 +105,7 @@ class DecoderRNN(nn.Module):
         self.dim_word = dim_word
         self.max_length = max_len
         self.sos_id = 1
-        self.eos_id = 2
+        self.eos_id = 36096
         self.input_dropout = nn.Dropout(input_dropout_p)
         self.embedding = nn.Embedding(self.dim_output, dim_word)
         self.attention = Attention(self.dim_hidden)

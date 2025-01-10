@@ -159,14 +159,14 @@ class AoA_Model(nn.Module):
         super(AoA_Model, self).__init__()
         self.vocab = vocab
         self.refiner_layer = AoA_Refiner_Core(config.REFINE_LAYER.NUM_HEADS,
-                                              config.REFINE_LAYERSTACK_LAYERS,
-                                              config.REFINE_LAYERFEATURE_SIZE)
+                                              config.REFINE_LAYER.STACK_LAYERS,
+                                              config.REFINE_LAYER.FEATURE_SIZE)
         self.decoder_layer = AoA_Decoder_Core(config.DECODER.EMBEDDING_LAYERS,
                                               config.DECODER.NUM_HEADS,
                                               config.DECODER.FEATURE_SIZE,
                                               config.DECODER.EMBEDDING_SIZE,
                                               len(self.vocab))
-        
+
         self.max_len = 50
         self.initialize_weights()
 
@@ -183,6 +183,7 @@ class AoA_Model(nn.Module):
                                                  sample['answer_masks'].type(torch.long).squeeze())
         else:
             input_ids = torch.zeros_like(sample['answer_tokens'].squeeze(), dtype=torch.long)
+            input_ids[:, 0] = 1
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  input_ids, 
                                                  sample['answer_masks'].type(torch.long).squeeze())
