@@ -122,7 +122,7 @@ class ViTCFeatureDataset(FeatureDataset):
 
         answer_tokens_ = self.tokenizer(" ".join(answer),
                                         padding="max_length",
-                                        add_special_tokens=False,
+                                        add_special_tokens=True,
                                         max_length=600,
                                         return_tensors="pt")
 

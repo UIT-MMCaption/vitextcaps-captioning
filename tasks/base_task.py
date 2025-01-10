@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.nn import NLLLoss
 from torch.optim import Adam
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.lr_scheduler import LambdaLR, ExponentialLR
 from builders.vocab_builder import build_vocab
 
 from utils.logging_utils import setup_logger
@@ -44,7 +44,7 @@ class BaseTask:
         logger.info("Defining optimizer and objective function")
         self.configuring_hyperparameters(config)
         self.optim = Adam(self.model.parameters(), lr=config.TRAINING.LEARNING_RATE, betas=(0.9, 0.98))
-        self.scheduler = LambdaLR(self.optim, self.lambda_lr)
+        self.scheduler = ExponentialLR(self.optim, 0.95)
         self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
 
     def configuring_hyperparameters(self, config):
