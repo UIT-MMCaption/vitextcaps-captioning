@@ -126,9 +126,13 @@ class ViTCFeatureDataset(FeatureDataset):
                                         max_length=600,
                                         return_tensors="pt")
 
-        answer_tokens = answer_tokens_.input_ids  # remove eos_token in answer
-        answer_mask = answer_tokens_.attention_mask
+        answer_tokens = answer_tokens_.input_ids
 
+        answer_mask = answer_tokens_.attention_mask
+        
+        ones = torch.ones([answer_tokens.size(0), 1], dtype=torch.int64)
+        
+        answer_tokens = torch.cat([ones, answer_tokens], dim=-1)
         return Instance(
             **features,
             image_id=item["image_id"],
@@ -137,7 +141,7 @@ class ViTCFeatureDataset(FeatureDataset):
             question=" ".join(question),
             question_tokens=question_tokens,
             answers=answer,
-            answer_tokens=answer_tokens,
+            answer_tokens=answer_tokens[:, :-1],
             answer_masks=answer_mask,
         )
 
@@ -261,6 +265,10 @@ class ViTCDictionaryDataset(DictionaryDataset):
         answer_tokens = answer_tokens_.input_ids
 
         answer_mask = answer_tokens_.attention_mask
+        
+        ones = torch.ones([answer_tokens.size(0), 1], dtype=torch.int64)
+        
+        answer_tokens = torch.cat([ones, answer_tokens], dim=-1)
         return Instance(
             **features,
             question_id=item["question_id"],
@@ -269,6 +277,6 @@ class ViTCDictionaryDataset(DictionaryDataset):
             filename=filename,
             ocr_tokens=ocr_tokens,
             answers=answers,
-            answer_tokens=answer_tokens,
+            answer_tokens=answer_tokens[:, :-1],
             answer_masks=answer_mask
         )
