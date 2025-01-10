@@ -3,7 +3,7 @@ TASK: TrainingStacMR
 DATASET:
 
     FEATURE_DATASET:
-        TYPE: ViTCFeatureDataset
+        TYPE: OcrFeatureDataset
         BATCH_SIZE: 64
         WORKERS: 0
         FEATURE_PATH:
@@ -19,7 +19,7 @@ DATASET:
             PRETRAINED_NAME: vit5-base
             PADDING_INDEX: 0
     DICT_DATASET:
-        TYPE: ViTCDictionaryDataset
+        TYPE: OcrDictionaryDataset
         BATCH_SIZE: 64
         WORKERS: 0
         FEATURE_PATH:
@@ -74,57 +74,20 @@ TRAINING:
     PATIENCE: 10
 
 MODEL:
-    ARCHITECTURE: VSRN
-    NAME: stacmr_vinvl_swintestspotter
+    ARCHITECTURE: AoA
+    NAME: aoa_vinvl_swintestspotter
     DEVICE: cuda
-    D_MODEL: 768
-    INPUT_DROPOUT_P: 0.2
+    D_MODEL: 2048
 
-    OBJECT_EMBEDDING:
-        D_FEATURE: 2048
-        DROPOUT: .1
-
-    BOX_EMBEDDING:
-        ARCHITECTURE: FeatureEmbedding
-        DEVICE: cuda
-        D_FEATURE: 4
-        D_MODEL: 768
-        DROPOUT: .1
-
-    OCR_TEXT_EMBEDDING:
-        WORD_EMBEDDING: ViFastText
-        WORD_EMBEDDING_CACHE: null
-
-    OCR_EMBEDDING:
-        D_FEATURE: 812 # 256 (det features) + 256 (rec features) + 300 (fasttext)
-        DROPOUT: .1
-
-    CLASSIFIER:
-        OCR_MAX_NUM: 50
-        MAX_LEN: 60
-        VOCAB_SIZE: 36096 # mbert vocab size
-
-    TEXT_EMBEDDING:
-        ARCHITECTURE: UsualEmbedding
-        DEVICE: cuda
-        D_EMBEDDING: 300
-        D_MODEL: 768
-        DROPOUT: .1
-        WORD_EMBEDDING: null
-        WORD_EMBEDDING_CACHE: null
-
-    RNN:
-        NUM_LAYERS: 1
-        RNN_TYPE: 'gru'
-        BIDIRECTIONAL: False
-        RNN_DROPOUT_P: 0.5
-
-    LOSS_FN:
-        MARGIN: 0.2
-        MEASURE: cosine
-        MAX_VIOLATION: True
-
-    ENCODER:
-        NO_IMGNORM: True
-        USE_ABS: True
+    REFINE_LAYER:
+      NUM_HEADS: 1
+      STACK_LAYERS: 3
+      FEATURE_SIZE: 2048
+    
+    DECODER:
+      EMBEDDING_LAYERS: 3
+      NUM_HEADS: 1
+      FEATURE_SIZE: 2048
+      EMBEDDING_SIZE: 2048
+      VOCAB_SIZE: 36096
 REMOVE_UNK_IN_PRED: True

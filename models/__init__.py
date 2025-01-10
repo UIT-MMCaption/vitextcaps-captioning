@@ -24,3 +24,4 @@ from .vit_mbert_generation import ViTmBERTGeneration
 from .mma_sr import MMA_SR_Model
 from .stacmr import VSRN
 from .vit5 import VIT5_MODEL
+from .aoa import AoA_Model
