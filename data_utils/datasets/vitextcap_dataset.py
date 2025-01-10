@@ -122,7 +122,7 @@ class ViTCFeatureDataset(FeatureDataset):
 
         answer_tokens_ = self.tokenizer(" ".join(answer),
                                         padding="max_length",
-                                        add_special_tokens=True,
+                                        add_special_tokens=False,
                                         max_length=600,
                                         return_tensors="pt")
 
@@ -261,7 +261,7 @@ class ViTCDictionaryDataset(DictionaryDataset):
         ocr_tokens = [text if text.strip() != "" else self.vocab.padding_token for text in features["ocr_texts"]]
         answer_tokens_ = self.tokenizer(" ".join(answers),
                                         padding="max_length",
-                                        add_special_tokens=True,
+                                        add_special_tokens=False,
                                         max_length=600,
                                         return_tensors="pt")
 
