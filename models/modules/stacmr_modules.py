@@ -155,7 +155,6 @@ class DecoderRNN(nn.Module):
 
         if mode == 'train':
             # use targets as rnn inputs
-            # print(targets)
             targets_emb = self.embedding(targets)
 
             for i in range(self.max_length - 1):

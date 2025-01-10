@@ -165,7 +165,7 @@ class TrainingStacMR(OpenEndedTask):
                     cap_emb = results['cap_emb']
                     # out = F.log_softmax(out, dim=-1)
                     
-                    shifted_right_answer_tokens = items.answer_tokens.squeeze()
+                    shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
                     # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     
                     answer_masks = items.answer_masks.squeeze()
@@ -227,7 +227,7 @@ class TrainingStacMR(OpenEndedTask):
                 cap_emb = results['cap_emb']
                 #out = F.log_softmax(out, dim=-1)
 
-                shifted_right_answer_tokens = items.answer_tokens.squeeze()
+                shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
                 self.optim.zero_grad()
                 # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                 answer_masks = items.answer_masks.squeeze()

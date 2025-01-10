@@ -133,6 +133,9 @@ class ViTCFeatureDataset(FeatureDataset):
         ones = torch.ones([answer_tokens.size(0), 1], dtype=torch.int64)
         
         answer_tokens = torch.cat([ones, answer_tokens], dim=-1)
+        
+        answer_mask = torch.roll(answer_mask, shifts=1, dims=-1)
+        
         return Instance(
             **features,
             image_id=item["image_id"],
@@ -269,6 +272,8 @@ class ViTCDictionaryDataset(DictionaryDataset):
         ones = torch.ones([answer_tokens.size(0), 1], dtype=torch.int64)
         
         answer_tokens = torch.cat([ones, answer_tokens], dim=-1)
+        answer_mask = torch.roll(answer_mask, shifts=1, dims=-1)
+
         return Instance(
             **features,
             question_id=item["question_id"],
