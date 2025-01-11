@@ -4,7 +4,7 @@ DATASET:
 
     FEATURE_DATASET:
         TYPE: ViTCFeatureDataset
-        BATCH_SIZE: 64
+        BATCH_SIZE: 16
         WORKERS: 0
         FEATURE_PATH:
             FEATURES: data\vinvl_vinvl
@@ -20,7 +20,7 @@ DATASET:
             PADDING_INDEX: 0
     DICT_DATASET:
         TYPE: ViTCDictionaryDataset
-        BATCH_SIZE: 64
+        BATCH_SIZE: 16
         WORKERS: 0
         FEATURE_PATH:
             FEATURES: data\vinvl_vinvl

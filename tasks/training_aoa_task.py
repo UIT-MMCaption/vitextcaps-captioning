@@ -67,10 +67,10 @@ class TrainingAoA(OpenEndedTask):
                     with torch.no_grad():
                         outs = self.model(items)
                     
-                    shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
+                    shifted_right_answer_tokens = items.answer_tokens.squeeze()
                     # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     
-                    answer_masks = torch.roll(items.answer_masks.squeeze(), shifts=1, dims=-1)
+                    answer_masks = items.answer_masks.squeeze()
                     
                     caption_loss = self.crit(outs, 
                                              shifted_right_answer_tokens, 
@@ -119,8 +119,9 @@ class TrainingAoA(OpenEndedTask):
                 items = items.to(self.device)
                 out = self.model(items)
 
-                shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
-                answer_masks = torch.roll(items.answer_masks.squeeze(), shifts=1, dims=-1)
+                shifted_right_answer_tokens = items.answer_tokens.squeeze()
+                    
+                answer_masks = items.answer_masks.squeeze()
                 self.optim.zero_grad()
                 # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                 
