@@ -68,17 +68,66 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(self.norm(att_features))
 
 
-class AoA_Refiner_Layer(nn.Module):
-    def __init__(self, features_size, num_heads, dropout=0.1):
-        super(AoA_Refiner_Layer, self).__init__()
-        self.attn = MultiHeadedDotAttention(num_heads, features_size)
-        self.res_connection = ResidualConnection(features_size)
+
+class DimensionReductionWithSkip(nn.Module):
+    def __init__(self, in_features, hidden_features, out_features):
+        super(DimensionReductionWithSkip, self).__init__()
+        
+        # First reduction path
+        self.path1 = nn.Sequential(
+            nn.Linear(in_features, hidden_features),
+            nn.LayerNorm(hidden_features),
+            nn.ReLU(),
+            nn.Linear(hidden_features, out_features),
+            nn.LayerNorm(out_features)
+        )
+        
+        # Direct reduction path
+        self.path2 = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.LayerNorm(out_features)
+        )
+        
+        # Final normalization after skip connection
+        self.final_norm = nn.LayerNorm(out_features)
+        self.final_activation = nn.ReLU()
 
     def forward(self, x):
-        att_features = self.attn(x, x, x, use_aoa=True)
-        refined_features = self.res_connection(x, att_features)
+        # Path 1: Gradual reduction
+        out1 = self.path1(x)
+        
+        # Path 2: Direct reduction (skip connection)
+        out2 = self.path2(x)
+        
+        # Combine paths
+        combined = out1 + out2
+        return self.final_activation(self.final_norm(combined))
 
-        return refined_features
+
+class AoA_Refiner_Core(nn.Module):
+    def __init__(self, num_heads, stack_layers, features_size, out_size):
+        super(AoA_Refiner_Core, self).__init__()
+        
+        # Dimension reduction with skip connection
+        self.dim_reduction = DimensionReductionWithSkip(
+            in_features=features_size,
+            hidden_features=1024,  # Intermediate dimension
+            out_features=out_size
+        )
+        
+        # Attention layers working with reduced dimension
+        self.layers = nn.ModuleList([AoA_Refiner_Layer(out_size, num_heads) for _ in range(stack_layers)])
+        self.norm = nn.LayerNorm(out_size)
+
+    def forward(self, x):
+        # Reduce dimension first with skip connection
+        x = self.dim_reduction(x)
+        
+        # Apply refinement layers
+        for layer in self.layers:
+            x = layer(x)
+            
+        return self.norm(x)
 
 
 class AoA_Refiner_Core(nn.Module):
