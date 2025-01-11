@@ -84,18 +84,22 @@ class AoA_Refiner_Layer(nn.Module):
 class AoA_Refiner_Core(nn.Module):
     def __init__(self, num_heads, stack_layers, features_size, out_size):
         super(AoA_Refiner_Core, self).__init__()
-
-        self.layers = nn.ModuleList([AoA_Refiner_Layer(features_size, num_heads) for _ in range(stack_layers)])
-        self.linear = nn.Linear(features_size, out_size)
-
+        
+        self.dim_reduction = nn.Sequential(
+            nn.Linear(features_size, out_size),
+            nn.LayerNorm(out_size),
+            nn.ReLU()
+        )
+        
+        self.layers = nn.ModuleList([AoA_Refiner_Layer(out_size, num_heads) for _ in range(stack_layers)])
         self.norm = nn.LayerNorm(out_size)
 
     def forward(self, x):
-
+        x = self.dim_reduction(x)
+  
         for layer in self.layers:
             x = layer(x)
-        x = self.linear(x)
-
+            
         return self.norm(x)
 
 
