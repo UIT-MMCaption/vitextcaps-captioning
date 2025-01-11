@@ -1,10 +1,6 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn import NLLLoss, CrossEntropyLoss
-from torch.utils.data import DataLoader
-from data_utils.utils import collate_fn
-from torch.nn.utils import clip_grad_norm_
 
 from utils.logging_utils import setup_logger
 from tasks.open_ended_task import OpenEndedTask
@@ -95,9 +91,9 @@ class TrainingAoA(OpenEndedTask):
                 items = items.to(self.device)
                 with torch.no_grad():
                     outs = self.model(items)
-
+                answers_gen_ids = outs.argmax(dim=-1)
                 answers_gt = items.answers
-                answers_gen = self.tokenizer.batch_decode(outs,
+                answers_gen = self.tokenizer.batch_decode(answers_gen_ids,
                                                           skip_special_tokens=True)
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
                     words = gen_i.split()
@@ -208,9 +204,10 @@ class TrainingAoA(OpenEndedTask):
                 items = items.to(self.device)
                 with torch.no_grad():
                     outs = self.model(items)
-
+                    
+                answers_gen_ids = outs.argmax(dim=-1)
                 answers_gt = items.answers
-                answers_gen = self.tokenizer.batch_decode(outs,
+                answers_gen = self.tokenizer.batch_decode(answers_gen_ids,
                                                           skip_special_tokens=True)
                 gts = {}
                 gens = {}

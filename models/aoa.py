@@ -168,7 +168,7 @@ class AoA_Model(nn.Module):
                                               config.DECODER.EMBEDDING_SIZE,
                                               config.DECODER.VOCAB_SIZE)
 
-        self.max_len = 50
+        self.d_model = config.D_MODEL
         self.initialize_weights()
 
     def initialize_weights(self):
@@ -178,13 +178,14 @@ class AoA_Model(nn.Module):
 
     def forward(self, sample):
         refined_features = self.refiner_layer(sample['region_features']) # batch_size, img_size, features_size
-        print(refined_features.shape)
         if self.training:
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  sample['answer_tokens'].type(torch.long).squeeze(), 
                                                  sample['answer_masks'].type(torch.long).squeeze())
         else:
             input_ids = torch.zeros_like(sample['answer_tokens'].squeeze(), dtype=torch.long)
+            if len(input_ids.size()) < 2:
+                input_ids = input_ids.unsqueeze(0)
             input_ids[:, 0] = 1
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  input_ids, 
