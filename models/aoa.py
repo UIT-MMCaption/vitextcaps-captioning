@@ -165,7 +165,7 @@ class AoA_Model(nn.Module):
                                               config.DECODER.NUM_HEADS,
                                               config.DECODER.FEATURE_SIZE,
                                               config.DECODER.EMBEDDING_SIZE,
-                                              len(self.vocab))
+                                              config.DECODER.VOCAB_SIZE)
 
         self.max_len = 50
         self.initialize_weights()
