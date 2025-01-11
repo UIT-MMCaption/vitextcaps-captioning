@@ -82,19 +82,19 @@ class AoA_Refiner_Layer(nn.Module):
 
 
 class AoA_Refiner_Core(nn.Module):
-    def __init__(self, num_heads, stack_layers, features_size):
+    def __init__(self, num_heads, stack_layers, features_size, out_size):
         super(AoA_Refiner_Core, self).__init__()
 
         self.layers = nn.ModuleList([AoA_Refiner_Layer(features_size, num_heads) for _ in range(stack_layers)])
-        # self.layer = AoA_Refiner_Layer(features_size, num_heads)
+        self.linear = nn.Linear(features_size, out_size)
 
-        self.norm = nn.LayerNorm(features_size)
+        self.norm = nn.LayerNorm(out_size)
 
     def forward(self, x):
 
         for layer in self.layers:
             x = layer(x)
-        # x = self.layer(x)
+        x = self.linear(x)
 
         return self.norm(x)
 
@@ -160,7 +160,8 @@ class AoA_Model(nn.Module):
         self.vocab = vocab
         self.refiner_layer = AoA_Refiner_Core(config.REFINE_LAYER.NUM_HEADS,
                                               config.REFINE_LAYER.STACK_LAYERS,
-                                              config.REFINE_LAYER.FEATURE_SIZE)
+                                              config.REFINE_LAYER.FEATURE_SIZE,
+                                              config.REFINE_LAYER.OUT_SIZE)
         self.decoder_layer = AoA_Decoder_Core(config.DECODER.EMBEDDING_LAYERS,
                                               config.DECODER.NUM_HEADS,
                                               config.DECODER.FEATURE_SIZE,
@@ -177,6 +178,7 @@ class AoA_Model(nn.Module):
 
     def forward(self, sample):
         refined_features = self.refiner_layer(sample['region_features']) # batch_size, img_size, features_size
+        print(refined_features.shape)
         if self.training:
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  sample['answer_tokens'].type(torch.long).squeeze(), 

@@ -72,9 +72,9 @@ class TrainingAoA(OpenEndedTask):
                     
                     answer_masks = items.answer_masks.squeeze()
                     
-                    caption_loss = self.crit(outs, 
-                                             shifted_right_answer_tokens, 
-                                             answer_masks)
+                    caption_loss = self.loss_fn(outs, 
+                                                shifted_right_answer_tokens, 
+                                                answer_masks)
                     
                     this_loss = caption_loss.item()
                     running_loss += this_loss
@@ -125,9 +125,9 @@ class TrainingAoA(OpenEndedTask):
                 self.optim.zero_grad()
                 # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                 
-                caption_loss = self.crit(out, 
-                                         shifted_right_answer_tokens, 
-                                         answer_masks)
+                caption_loss = self.loss_fn(out, 
+                                            shifted_right_answer_tokens, 
+                                            answer_masks)
                 
                 loss = caption_loss
                 

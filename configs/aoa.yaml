@@ -77,17 +77,18 @@ MODEL:
     ARCHITECTURE: AoA_Model
     NAME: aoa_vinvl_swintestspotter
     DEVICE: cuda
-    D_MODEL: 2048
+    D_MODEL: 768
 
     REFINE_LAYER:
       NUM_HEADS: 1
       STACK_LAYERS: 3
       FEATURE_SIZE: 2048
+      OUT_SIZE: 768
     
     DECODER:
       EMBEDDING_LAYERS: 3
       NUM_HEADS: 1
-      FEATURE_SIZE: 2048
-      EMBEDDING_SIZE: 2048
+      FEATURE_SIZE: 768
+      EMBEDDING_SIZE: 768
       VOCAB_SIZE: 36096
 REMOVE_UNK_IN_PRED: True
