@@ -68,6 +68,18 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(self.norm(att_features))
 
 
+class AoA_Refiner_Layer(nn.Module):
+    def __init__(self, features_size, num_heads, dropout=0.1):
+        super(AoA_Refiner_Layer, self).__init__()
+        self.attn = MultiHeadedDotAttention(num_heads, features_size)
+        self.res_connection = ResidualConnection(features_size)
+
+    def forward(self, x):
+        att_features = self.attn(x, x, x, use_aoa=True)
+        refined_features = self.res_connection(x, att_features)
+
+        return refined_features
+
 
 class DimensionReductionWithSkip(nn.Module):
     def __init__(self, in_features, hidden_features, out_features):
@@ -124,28 +136,6 @@ class AoA_Refiner_Core(nn.Module):
         x = self.dim_reduction(x)
         
         # Apply refinement layers
-        for layer in self.layers:
-            x = layer(x)
-            
-        return self.norm(x)
-
-
-class AoA_Refiner_Core(nn.Module):
-    def __init__(self, num_heads, stack_layers, features_size, out_size):
-        super(AoA_Refiner_Core, self).__init__()
-        
-        self.dim_reduction = nn.Sequential(
-            nn.Linear(features_size, out_size),
-            nn.LayerNorm(out_size),
-            nn.ReLU()
-        )
-        
-        self.layers = nn.ModuleList([AoA_Refiner_Layer(out_size, num_heads) for _ in range(stack_layers)])
-        self.norm = nn.LayerNorm(out_size)
-
-    def forward(self, x):
-        x = self.dim_reduction(x)
-  
         for layer in self.layers:
             x = layer(x)
             
