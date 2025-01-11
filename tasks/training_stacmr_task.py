@@ -158,7 +158,7 @@ class TrainingStacMR(OpenEndedTask):
                 for it, items in enumerate(dataloader):
                     items = items.to(self.device)
                     with torch.no_grad():
-                        results = self.model(items, mode='inference')
+                        results = self.model(items)
 
                     seq_prob = results['scores'].contiguous()
                     img_emb = results['img_emb']
