@@ -19,7 +19,7 @@ DATASET:
             PRETRAINED_NAME: vit5-base
             PADDING_INDEX: 0
     DICT_DATASET:
-        TYPE: ViTCFeatureDataset
+        TYPE: ViTCDictionaryDataset
         BATCH_SIZE: 64
         WORKERS: 0
         FEATURE_PATH:

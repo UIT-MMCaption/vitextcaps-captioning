@@ -55,31 +55,7 @@ class TrainingAoA(OpenEndedTask):
         self.config = config
         self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
 
-
-        #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
-    
-    
-    def create_dict_dataloaders(self, config):
-        # creating dictionary iterable-dataset data loader
-        self.train_dict_dataloader = DataLoader(
-            dataset=self.train_dict_dataset,
-            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.TRAINING_BEAM_SIZE,
-            shuffle=True,
-            collate_fn=collate_fn
-        )
-
-        self.dev_dict_dataloader = DataLoader(
-            dataset=self.dev_dict_dataset,
-            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.EVALUATING_BEAM_SIZE,
-            shuffle=True,
-            collate_fn=collate_fn
-        )
-        self.test_dict_dataloader = DataLoader(
-            dataset=self.test_dict_dataset,
-            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE,
-            shuffle=True,
-            collate_fn=collate_fn
-        )
+        self.loss_fn = LanguageModelCriterion()
 
     def evaluate_loss(self, dataloader):
         self.model.eval()
@@ -99,12 +75,8 @@ class TrainingAoA(OpenEndedTask):
                     caption_loss = self.crit(outs, 
                                              shifted_right_answer_tokens, 
                                              answer_masks)
-                
                     
-                    # loss = 2.0 * retrieval_loss + caption_loss
-                    loss = caption_loss # Focus on text generation
-                    
-                    this_loss = loss.item()
+                    this_loss = caption_loss.item()
                     running_loss += this_loss
 
                     pbar.set_postfix(loss=running_loss / (it + 1))
@@ -156,7 +128,6 @@ class TrainingAoA(OpenEndedTask):
                                          shifted_right_answer_tokens, 
                                          answer_masks)
                 
-                # loss = 2.0 * retrieval_loss + caption_loss
                 loss = caption_loss
                 
                 loss.backward()
