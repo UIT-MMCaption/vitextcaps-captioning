@@ -161,11 +161,11 @@ class TrainingStacMR(OpenEndedTask):
                         results = self.model(items)
 
                     seq_prob = results['scores'].contiguous()
-                    img_emb = results['img_emb']
-                    cap_emb = results['cap_emb']
+                    # img_emb = results['img_emb']
+                    # cap_emb = results['cap_emb']
                     # out = F.log_softmax(out, dim=-1)
                     
-                    shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
+                    shifted_right_answer_tokens = items.answer_tokens.squeeze()
                     # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     
                     answer_masks = items.answer_masks.squeeze()
@@ -174,7 +174,7 @@ class TrainingStacMR(OpenEndedTask):
                                              shifted_right_answer_tokens, 
                                              answer_masks)
                 
-                    retrieval_loss = self.criterion(img_emb, cap_emb)
+                    # retrieval_loss = self.criterion(img_emb, cap_emb)
                     
                     # loss = 2.0 * retrieval_loss + caption_loss
                     loss = caption_loss # Focus on text generation
@@ -223,19 +223,21 @@ class TrainingStacMR(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 seq_probs = results["scores"].contiguous()
-                img_emb = results['img_emb']
-                cap_emb = results['cap_emb']
+                # img_emb = results['img_emb']
+                # cap_emb = results['cap_emb']
                 #out = F.log_softmax(out, dim=-1)
 
-                shifted_right_answer_tokens = torch.roll(items.answer_tokens.squeeze(), shifts=1, dims=-1)
-                self.optim.zero_grad()
+                shifted_right_answer_tokens = items.answer_tokens.squeeze()
                 # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
+                    
                 answer_masks = items.answer_masks.squeeze()
+                self.optim.zero_grad()
+
                 caption_loss = self.crit(seq_probs, 
                                          shifted_right_answer_tokens, 
                                          answer_masks)
                 
-                retrieval_loss = self.criterion(img_emb, cap_emb)
+                # retrieval_loss = self.criterion(img_emb, cap_emb)
                 
                 # loss = 2.0 * retrieval_loss + caption_loss
                 loss = caption_loss
