@@ -119,6 +119,9 @@ class TrainingStacMR(OpenEndedTask):
         self.crit.to(self.device)
         self.criterion.to(self.device)
         self.grad_clip = config.TRAINING.GRAD_CLIP
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim,
+                                                         step_size=15,
+                                                         gamma=0.1)
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
     
     def adjust_learning_rate(self, optimizer, epoch):
