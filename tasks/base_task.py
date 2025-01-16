@@ -15,6 +15,7 @@ import random
 
 logger = setup_logger()
 
+
 class BaseTask:
     def __init__(self, config):
 
@@ -44,7 +45,9 @@ class BaseTask:
         logger.info("Defining optimizer and objective function")
         self.configuring_hyperparameters(config)
         self.optim = Adam(self.model.parameters(), lr=config.TRAINING.LEARNING_RATE, betas=(0.9, 0.98))
-        self.scheduler = LambdaLR(self.optim, self.lambda_lr)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim,
+                                                         step_size=15,
+                                                         gamma=0.1)
         self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
 
     def configuring_hyperparameters(self, config):
