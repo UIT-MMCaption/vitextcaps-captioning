@@ -120,6 +120,7 @@ class TrainingStacMR(OpenEndedTask):
         self.criterion.to(self.device)
         self.grad_clip = config.TRAINING.GRAD_CLIP
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+      
     
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
