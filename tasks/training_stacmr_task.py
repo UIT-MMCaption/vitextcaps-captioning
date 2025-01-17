@@ -126,13 +126,6 @@ class TrainingStacMR(OpenEndedTask):
         step += 1
         return min(step ** -.5, step * warm_up ** -1.5)
     
-    def adjust_learning_rate(self, optimizer, epoch):
-        """Sets the learning rate to the initial LR
-        decayed by 10 every 30 epochs"""
-        lr = self.config.TRAINING.LEARNING_RATE * (0.1 ** (epoch // self.config.TRAINING.LR_UPDATE))
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
-    
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
         self.train_dict_dataloader = DataLoader(
