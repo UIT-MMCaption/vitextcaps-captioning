@@ -195,8 +195,8 @@ class DecoderRNN(nn.Module):
                         prob_prev = torch.exp(torch.div(logprobs, temperature))
                     it = torch.multinomial(prob_prev, 1).cuda()
                     sampleLogprobs = logprobs.gather(1, it)
-                    # seq_logprobs.append(sampleLogprobs.view(-1, 1))
-                    seq_logprobs.append(logprobs.unsqueeze(dim=1))
+                    seq_logprobs.append(sampleLogprobs.view(-1, 1))
+                    # seq_logprobs.append(logprobs.unsqueeze(dim=1))
                     it = it.view(-1).long()
 
                 seq_preds.append(it.view(-1, 1))
@@ -210,7 +210,7 @@ class DecoderRNN(nn.Module):
                     self.out(decoder_output.squeeze(1)), dim=1)
 
             seq_logprobs = torch.cat(seq_logprobs, 1)
-            seq_preds = torch.cat(seq_preds, 1)
+            seq_preds = torch.cat(seq_preds[1:], 1)
 
         return seq_logprobs, seq_preds
 
