@@ -175,7 +175,7 @@ class TrainingStacMR(OpenEndedTask):
                     
                     answer_masks = items.answer_masks.squeeze()
                     
-                    caption_loss = self.crit(seq_prob, 
+                    caption_loss = self.crit(seq_prob,
                                              shifted_right_answer_tokens, 
                                              answer_masks)
                 
@@ -238,8 +238,8 @@ class TrainingStacMR(OpenEndedTask):
                 answer_masks = items.answer_masks.squeeze()
                 self.optim.zero_grad()
 
-                caption_loss = self.crit(seq_probs, 
-                                         shifted_right_answer_tokens, 
+                caption_loss = self.crit(seq_probs,
+                                         shifted_right_answer_tokens,
                                          answer_masks)
                 
                 # retrieval_loss = self.criterion(img_emb, cap_emb)
