@@ -120,6 +120,11 @@ class TrainingStacMR(OpenEndedTask):
         self.criterion.to(self.device)
         self.grad_clip = config.TRAINING.GRAD_CLIP
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+      
+    def lambda_lr(self, step):
+        warm_up = self.warmup
+        step += 1
+        return min(step ** -.5, step * warm_up ** -1.5)
     
     def adjust_learning_rate(self, optimizer, epoch):
         """Sets the learning rate to the initial LR
