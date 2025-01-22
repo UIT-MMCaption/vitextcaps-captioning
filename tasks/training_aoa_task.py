@@ -51,7 +51,7 @@ class TrainingAoA(OpenEndedTask):
         self.config = config
         self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
 
-        self.loss_fn = LanguageModelCriterion()
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=0)
 
     def evaluate_loss(self, dataloader):
         self.model.eval()
