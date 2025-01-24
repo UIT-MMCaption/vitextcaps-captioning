@@ -13,7 +13,7 @@ from tqdm import tqdm
 import itertools
 from shutil import copyfile
 import json
-
+from torch.optim import Adam
 from torch.autograd import Variable
 
 logger = setup_logger()
@@ -50,7 +50,8 @@ class TrainingAoA(OpenEndedTask):
         super().__init__(config)
         self.config = config
         self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
-
+        self.optim = Adam(self.model.parameters(), lr=config.TRAINING.LEARNING_RATE, betas=(0.9, 0.98))
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optim, gamma=0.98)
         self.loss_fn = nn.CrossEntropyLoss(ignore_index=0)
 
     def evaluate_loss(self, dataloader):
