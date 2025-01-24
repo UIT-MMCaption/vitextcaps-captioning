@@ -72,8 +72,8 @@ class TrainingAoA(OpenEndedTask):
                     #                             shifted_right_answer_tokens, 
                     #                             answer_masks)
                     
-                    caption_loss = self.loss_fn(outs, 
-                                                shifted_right_answer_tokens)
+                    caption_loss = self.loss_fn(outs.contiguous().view(-1, outs.shape[2]), 
+                                                shifted_right_answer_tokens.contiguous().view(-1))
                     
                     this_loss = caption_loss.item()
                     running_loss += this_loss
@@ -128,8 +128,8 @@ class TrainingAoA(OpenEndedTask):
                 #                             shifted_right_answer_tokens, 
                 #                             answer_masks)
                 
-                caption_loss = self.loss_fn(out, 
-                                            shifted_right_answer_tokens)
+                caption_loss = self.loss_fn(out.contiguous().view(-1, out.shape[2]), 
+                                            shifted_right_answer_tokens.contiguous().view(-1))
                 
                 loss = caption_loss
                 
