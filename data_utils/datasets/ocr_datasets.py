@@ -4,10 +4,12 @@ from data_utils.datasets.feature_dataset import FeatureDataset
 from data_utils.datasets.dictionary_dataset import DictionaryDataset
 from utils.instance import Instance
 from builders.dataset_builder import META_DATASET
-
+from utils.logging_utils import setup_logger
 import os
 import numpy as np
 from typing import Dict, Any
+
+logger = setup_logger()
 
 @META_DATASET.register()
 class OcrFeatureDataset(FeatureDataset):
@@ -16,6 +18,13 @@ class OcrFeatureDataset(FeatureDataset):
         self.fasttext_path = config.FEATURE_PATH.FASTTEXT
 
         # scene text features
+        self.edge_features_path = False
+        try:
+            self.edge_features_path = config.FEATURE_PATH.EDGE
+        except ValueError as e:
+            logger.info(e)
+            raise
+            
         self.scene_text_features_path = config.FEATURE_PATH.SCENE_TEXT
         self.scene_text_threshold = config.SCENE_TEXT_THRESHOLD
         self.max_scene_text = config.MAX_SCENE_TEXT
@@ -37,7 +46,6 @@ class OcrFeatureDataset(FeatureDataset):
             features = np.zeros([1, 300])
                 
         return torch.tensor(features, dtype=torch.float32)
-
     
     def load_scene_text_features(self, image_id: int) -> Dict[str, Any]:
         feature_file = os.path.join(self.scene_text_features_path, f"{image_id}.npy")
@@ -61,7 +69,6 @@ class OcrFeatureDataset(FeatureDataset):
 
             if isinstance(feature, np.ndarray):
                 features[key] = torch.tensor(feature, dtype=torch.float32)
-
         
         ocr_fasttext_features = self.load_fasttext_features(image_id)
         ocr_nums = ocr_fasttext_features.shape[0]
@@ -76,15 +83,30 @@ class OcrFeatureDataset(FeatureDataset):
             "ocr_fasttext_features": ocr_fasttext_features,  # Thêm đặc trưng FastText
         }
         
-
-
+    def load_edge_features(self, image_id: int) -> Dict[str, Any]:
+        feature_file = os.path.join(self.edge_features_path, f"{image_id}_info.npy")
+        features = np.load(feature_file, allow_pickle=True)[()]
+        for key, feature in features.items():
+            if isinstance(feature, np.ndarray):
+                features[key] = torch.tensor(feature, dtype=torch.float32)
+        return features
+                
     def load_features(self, image_id: int) -> Dict[str, Any]:
         image_features = self.load_image_features(image_id)
         scene_text_features = self.load_scene_text_features(image_id)
-        features = {
-            **image_features,
-            **scene_text_features
-        }
+        edge_features = None
+        if self.edge_features_path:
+            edge_features = self.load_edge_features(image_id)
+            features = {
+                **edge_features,
+                **image_features,
+                **scene_text_features
+            }
+        else:
+            features = {
+                **image_features,
+                **scene_text_features
+            }
 
         return features
 
@@ -125,10 +147,17 @@ class OcrDictionaryDataset(DictionaryDataset):
         self.fasttext_path = config.FEATURE_PATH.FASTTEXT
 
         # scene text features
+        self.edge_features_path = False
+        try:
+            self.edge_features_path = config.FEATURE_PATH.EDGE
+        except ValueError as e:
+            logger.info(e)
+            raise
+            
         self.scene_text_features_path = config.FEATURE_PATH.SCENE_TEXT
         self.scene_text_threshold = config.SCENE_TEXT_THRESHOLD
         self.max_scene_text = config.MAX_SCENE_TEXT
-
+    
     def load_image_features(self, image_id: int) -> Dict[str, Any]:
         feature_file = os.path.join(self.image_features_path, f"{image_id}.npy")
         features = np.load(feature_file, allow_pickle=True)[()]
@@ -146,7 +175,6 @@ class OcrDictionaryDataset(DictionaryDataset):
             features = np.zeros([1, 300])
 
         return torch.tensor(features, dtype=torch.float32)
-
     
     def load_scene_text_features(self, image_id: int) -> Dict[str, Any]:
         feature_file = os.path.join(self.scene_text_features_path, f"{image_id}.npy")
@@ -184,14 +212,30 @@ class OcrDictionaryDataset(DictionaryDataset):
             "ocr_fasttext_features": ocr_fasttext_features,  # Thêm đặc trưng FastText
         }
         
+    def load_edge_features(self, image_id: int) -> Dict[str, Any]:
+        feature_file = os.path.join(self.edge_features_path, f"{image_id}_info.npy")
+        features = np.load(feature_file, allow_pickle=True)[()]
+        for key, feature in features.items():
+            if isinstance(feature, np.ndarray):
+                features[key] = torch.tensor(feature, dtype=torch.float32)
+        return features
 
     def load_features(self, image_id: int) -> Dict[str, Any]:
         image_features = self.load_image_features(image_id)
         scene_text_features = self.load_scene_text_features(image_id)
-        features = {
-            **image_features,
-            **scene_text_features
-        }
+        edge_features = None
+        if self.edge_features_path:
+            edge_features = self.load_edge_features(image_id)
+            features = {
+                **edge_features,
+                **image_features,
+                **scene_text_features
+            }
+        else:
+            features = {
+                **image_features,
+                **scene_text_features
+            }
 
         return features
 

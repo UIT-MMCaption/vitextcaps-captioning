@@ -9,6 +9,7 @@ DATASET:
       FEATURES: ./features/vinvl_vinvl
       SCENE_TEXT: ./features/swintextspotter
       FASTTEXT: ./features/fasttext
+      EDGE: null
       IMAGE: null
     SCENE_TEXT_THRESHOLD: 0.0
     MAX_SCENE_TEXT: 100
@@ -22,6 +23,7 @@ DATASET:
       FEATURES: ./features/vinvl_vinvl
       SCENE_TEXT: ./features/swintextspotter
       FASTTEXT: ./features/fasttext
+      EDGE: null
       IMAGE: null
     SCENE_TEXT_THRESHOLD: 0.0
     MAX_SCENE_TEXT: 100

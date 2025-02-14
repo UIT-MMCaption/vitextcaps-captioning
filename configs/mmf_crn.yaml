@@ -6,11 +6,11 @@ DATASET:
     BATCH_SIZE: 64
     WORKERS: 0
     FEATURE_PATH:
-      FEATURES: /content/vitextcaps-captioning/data/vinvl_vinvl
-      SCENE_TEXT: /content/vitextcaps-captioning/data/swintextspotter
-      FASTTEXT: /content/vitextcaps-captioning/data/fasttext
-      EDGE: null
+      FEATURES: /content/data/vinvl/vinvl_vinvl
+      SCENE_TEXT: /content/data/swintextspotter/swintextspotter
+      FASTTEXT: /content/data/fasttext
       IMAGE: null
+      EDGE: /content/data/edge_feat
     SCENE_TEXT_THRESHOLD: 0.0
     MAX_SCENE_TEXT: 100
     WORD_EMBEDDING: ViFastText
@@ -20,11 +20,11 @@ DATASET:
     BATCH_SIZE: 64
     WORKERS: 0
     FEATURE_PATH:
-      FEATURES: /content/vitextcaps-captioning/data/vinvl_vinvl
-      SCENE_TEXT: /content/vitextcaps-captioning/data/swintextspotter
-      FASTTEXT: /content/vitextcaps-captioning/data/fasttext
-      EDGE: null
+      FEATURES: /content/data/vinvl/vinvl_vinvl
+      SCENE_TEXT: /content/data/swintextspotter/swintextspotter
+      FASTTEXT: /content/data/fasttext
       IMAGE: null
+      EDGE: /content/data/edge_feat
     SCENE_TEXT_THRESHOLD: 0.0
     MAX_SCENE_TEXT: 100
     WORD_EMBEDDING: ViFastText
@@ -49,13 +49,13 @@ DATASET:
     QUESTION_TOKEN: <question>
     ANSWER_TOKEN: <answer>
     JSON_PATH:
-      TRAIN: OpenViVQA_train.json
-      DEV: OpenViVQA_dev.json
-      TEST: OpenViVQA_test.json
+      TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
+      DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
+      TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
   JSON_PATH:
-    TRAIN: OpenViVQA_train.json
-    DEV: OpenViVQA_dev.json
-    TEST: OpenViVQA_test.json
+    TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
+    DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
+    TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
 
 TRAINING:
   CHECKPOINT_PATH: saved_models
@@ -68,8 +68,8 @@ TRAINING:
   PATIENCE: 5
 
 MODEL:
-  ARCHITECTURE: MMF_M4C
-  NAME: mmf_m4c_x152++_faster_rcnn
+  ARCHITECTURE: CRN_MODEL
+  NAME: mmf_crn_vinvl_swimspotter
   DEVICE: cuda
   D_MODEL: 768
   OBJECT_EMBEDDING:
@@ -97,6 +97,11 @@ MODEL:
     HIDDEN_SIZE: 768
     NUM_HIDDEN_LAYERS: 4
     NUM_ATTENTION_HEADS: 8
+  PAM:
+    HIDDEN_SIZE: 768
+    NUM_HIDDEN_LAYERS: 2
+  MRG:
+    HIDDEN_SIZE: 768
   TEXT_BERT:
     HIDDEN_SIZE: 768
     NUM_HIDDEN_LAYERS: 12
@@ -113,5 +118,5 @@ MODEL:
     D_MODEL: 768
     DROPOUT: .1
     WORD_EMBEDDING: null
-    WORD_EMBEDDING_CACHE: null  
+    WORD_EMBEDDING_CACHE: null
 
