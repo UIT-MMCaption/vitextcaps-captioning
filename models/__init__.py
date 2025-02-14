@@ -25,4 +25,4 @@ from .mma_sr import MMA_SR_Model
 from .stacmr import VSRN
 from .vit5 import VIT5_MODEL
 from .aoa import AoA_Model
-from .mmf_crn import CRN
+from .mmf_crn import CRN_MODEL

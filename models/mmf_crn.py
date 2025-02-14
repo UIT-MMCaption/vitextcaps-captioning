@@ -441,106 +441,122 @@ class QTV(BertPreTrainedModel):
         fwd_results['obj_mmt_in'] = fwd_results['obj_mmt_in'] + torch.tanh(mmt_seq_output[:, txt_end:ocr_begin])
         fwd_results['ocr_mmt_in'] = fwd_results['ocr_mmt_in'] + torch.tanh(mmt_seq_output[:, ocr_begin:ocr_end])
 
-class MRG_Graph(nn.Module):  # mimic the GRU of the GGNN
+class MRG_Graph(nn.Module):
     def __init__(self, config):
         super().__init__()
-
-        self._build_common_layer(module_name='qv', hidden_size=config.hidden_size)
-        self._build_common_layer(module_name='qt', hidden_size=config.hidden_size)
-        self.ques_norm = nn.LayerNorm(config.hidden_size)
-
+        # Only build visual-text interaction layer
+        self._build_common_layer(module_name='vt', hidden_size=config.hidden_size)
+        
     def _build_common_layer(self, module_name, hidden_size, edge_dim=5):
-        self_attn = nn.Linear(hidden_size, 1)
-        transform_edge = nn.Sequential(nn.Linear(edge_dim, hidden_size // 2),
-                                        nn.ELU(),
-                                        nn.Linear(hidden_size // 2, hidden_size))
-
+        # Removed question-related attention
+        transform_edge = nn.Sequential(
+            nn.Linear(edge_dim, hidden_size // 2),
+            nn.ELU(),
+            nn.Linear(hidden_size // 2, hidden_size)
+        )
+        
         embeded = nn.Linear(hidden_size, hidden_size)
         edge_attn = nn.Linear(hidden_size, 1)
-
-        setattr(self, '{}_self_attn'.format(module_name), self_attn)
+        
         setattr(self, '{}_transform_edge'.format(module_name), transform_edge)
         setattr(self, '{}_embeded'.format(module_name), embeded)
         setattr(self, '{}_edge_attn'.format(module_name), edge_attn)
-
-        # build_fc_with_layernorm
-        feat_layer_1 = nn.Sequential(nn.Linear(hidden_size, hidden_size),
-                                    nn.LayerNorm(hidden_size))
-        feat_layer_2 = nn.Sequential(nn.Linear(hidden_size, hidden_size),
-                                    nn.LayerNorm(hidden_size))
-        feat_layer_3 = nn.Sequential(nn.Linear(hidden_size, hidden_size),
-                                    nn.LayerNorm(hidden_size))
+        
+        # Feature processing layers
+        feat_layer_1 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size)
+        )
+        feat_layer_2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size)
+        )
+        feat_layer_3 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size)
+        )
         input_drop = nn.Dropout(0.1)
+        
         setattr(self, '{}_feat_layer_1'.format(module_name), feat_layer_1)
         setattr(self, '{}_feat_layer_2'.format(module_name), feat_layer_2)
         setattr(self, '{}_feat_layer_3'.format(module_name), feat_layer_3)
         setattr(self, '{}_drop'.format(module_name), input_drop)
 
-    def _calculate_self_attn(self, ques, mask, module_name):
-        attn = getattr(self, module_name+'_self_attn')(ques).squeeze(-1)  # N, 20
-        attn = F.softmax(attn, dim=-1)
-        attn = attn * mask
-        attn = attn / attn.sum(1, keepdim=True)
-        question_feature = torch.bmm(attn.unsqueeze(1), ques)  # N, 1, 768
-        return question_feature
-
-    def _build_compute_graph(self, edge_feat, ques, input_mask, ques_mask, module_name):
+    def _build_compute_graph(self, edge_feat, visual_context, input_mask, module_name):
         batch, num_obj, num_subobj = edge_feat.size()[:3]
-
-        edge_feat = getattr(self, module_name+'_transform_edge')(edge_feat)  # [N, 100, 100, 768]
-        # conduct edge additive attetnion
-        ques_feature = self._calculate_self_attn(ques, ques_mask, module_name)  # [N, 1, 768]
-        ques_feature = getattr(self, module_name+'_embeded')(ques_feature).unsqueeze(1).expand(-1, num_obj, num_subobj, -1)
-        ques_guided_edge_attn = (getattr(self, module_name+'_edge_attn')(torch.tanh(ques_feature + edge_feat))).squeeze(-1)
-        A_edge_attn = F.softmax(ques_guided_edge_attn, -1)  # N, 100, 100
-
+        
+        # Transform edge features
+        edge_feat = getattr(self, module_name+'_transform_edge')(edge_feat)
+        
+        # Use visual context instead of question features
+        visual_context_emb = getattr(self, module_name+'_embeded')(visual_context)
+        visual_context_emb = visual_context_emb.unsqueeze(1).expand(-1, num_obj, num_subobj, -1)
+        
+        # Compute attention weights
+        edge_attn = getattr(self, module_name+'_edge_attn')(
+            torch.tanh(visual_context_emb + edge_feat)
+        ).squeeze(-1)
+        A_edge_attn = F.softmax(edge_attn, -1)
+        
+        # Apply mask
         target_size = edge_feat.size(1)
         s = input_mask.size(-1)
         input_mask = torch.nn.functional.pad(input_mask, (0, target_size-s), value=-100000.)
-
+        
         A_edge_attn = A_edge_attn * input_mask.unsqueeze(-1)
         A_edge_attn = A_edge_attn / (A_edge_attn.sum(dim=-1, keepdim=True) + 1e-12)
-
-        updated_edge_feat = edge_feat * A_edge_attn.unsqueeze(-1)  # N, 100*100, 768
-        updated_edge_feat = updated_edge_feat.sum(2)  # [N, 100, 768]
-
+        
+        # Update edge features
+        updated_edge_feat = edge_feat * A_edge_attn.unsqueeze(-1)
+        updated_edge_feat = updated_edge_feat.sum(2)
+        
         return A_edge_attn, updated_edge_feat, input_mask.squeeze()
 
     def forward(self, item, fwd_results):
         v_feat = fwd_results['obj_mmt_in']
         t_feat = fwd_results['ocr_mmt_in']
-        v2t_edge = item['obj_ocr_edge_feat'] # obj_ocr_edge_feat
-        t2v_edge = item['ocr_obj_edge_feat'] # ocr_obj_edge_feat
-        q_emb = fwd_results['txt_emb']
-
+        v2t_edge = item['obj_ocr_edge_feat']
+        t2v_edge = item['ocr_obj_edge_feat']
+        
         v_mask = fwd_results['obj_mask'].squeeze()
         t_mask = fwd_results['ocr_mask'].squeeze()
-        q_mask = fwd_results['txt_mask'].squeeze()
-        q_emb = self.ques_norm(q_emb)
-
-        v2t_attn, v2t_feat, v_mask = self._build_compute_graph(v2t_edge, q_emb, v_mask, q_mask, module_name='qv')
-        t2v_attn, t2v_feat, t_mask = self._build_compute_graph(t2v_edge, q_emb, t_mask, q_mask, module_name='qt')
-
-        v2t_mask = torch.bmm(v_mask.unsqueeze(-1), t_mask.unsqueeze(1))  # [2, 100, 100]
+        
+        # Use mean pooled visual features as context instead of question
+        visual_context = v_feat.mean(dim=1, keepdim=True)
+        
+        # Compute visual-text interactions
+        v2t_attn, v2t_feat, v_mask = self._build_compute_graph(
+            v2t_edge, visual_context, v_mask, module_name='vt'
+        )
+        t2v_attn, t2v_feat, t_mask = self._build_compute_graph(
+            t2v_edge, visual_context, t_mask, module_name='vt'
+        )
+        
+        # Compute masks for interactions
+        v2t_mask = torch.bmm(v_mask.unsqueeze(-1), t_mask.unsqueeze(1))
         t2v_mask = v2t_mask.transpose(1, 2)
         v2t_attn = v2t_attn * v2t_mask
         t2v_attn = t2v_attn * t2v_mask
-
+        
+        # Pad features if necessary
         v_s = v_feat.size(1)
-        v_feat = torch.nn.functional.pad(v_feat, (0, 0, 0, 100-v_s), value=-10000.0)
+        v_feat = torch.nn.functional.pad(v_feat, (0, 0, 0, 100-v_s), value=-100000.0)
         t_s = t_feat.size(1)
-        t_feat = torch.nn.functional.pad(t_feat, (0, 0, 0, 50-t_s), value=-10000.0)
-
-        new_t_feat = torch.bmm(v2t_attn.transpose(1, 2), v_feat)  # batch, 100, 768
-        new_v_feat = torch.bmm(t2v_attn.transpose(1, 2), t_feat)  # batch, 100, 768
-
-    
-        v_feat = self.qv_feat_layer_1(v_feat) + self.qv_feat_layer_2(new_v_feat) + self.qv_feat_layer_3(v2t_feat)
-        t_feat = self.qt_feat_layer_1(t_feat) + self.qt_feat_layer_2(new_t_feat) + self.qt_feat_layer_3(t2v_feat)
-
-        fwd_results['txt_emb'] = q_emb
-        fwd_results['obj_mmt_in'] = self.qv_drop(v_feat)
-        fwd_results['ocr_mmt_in'] = self.qt_drop(t_feat)
+        t_feat = torch.nn.functional.pad(t_feat, (0, 0, 0, 50-t_s), value=-100000.0)
+        
+        # Update features through cross-attention
+        new_t_feat = torch.bmm(v2t_attn.transpose(1, 2), v_feat)
+        new_v_feat = torch.bmm(t2v_attn.transpose(1, 2), t_feat)
+        
+        # Final feature update
+        v_feat = self.vt_feat_layer_1(v_feat) + self.vt_feat_layer_2(new_v_feat) + self.vt_feat_layer_3(v2t_feat)
+        t_feat = self.vt_feat_layer_1(t_feat) + self.vt_feat_layer_2(new_t_feat) + self.vt_feat_layer_3(t2v_feat)
+        
+        # Update forward results
+        fwd_results['obj_mmt_in'] = self.vt_drop(v_feat)
+        fwd_results['ocr_mmt_in'] = self.vt_drop(t_feat)
+        
+        return fwd_results
 
 
 
