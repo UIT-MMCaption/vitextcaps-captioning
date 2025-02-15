@@ -3,7 +3,7 @@ TASK: TrainingMMF
 DATASET:
   FEATURE_DATASET:
     TYPE: OcrFeatureDataset
-    BATCH_SIZE: 64
+    BATCH_SIZE: 16
     WORKERS: 0
     FEATURE_PATH:
       FEATURES: /content/data/vinvl/vinvl_vinvl
@@ -17,8 +17,8 @@ DATASET:
     WORD_EMBEDDING_CACHE: null
   DICT_DATASET:
     TYPE: OcrDictionaryDataset
-    BATCH_SIZE: 64
-    WORKERS: 0
+    BATCH_SIZE: 16
+    WORKERS: 1
     FEATURE_PATH:
       FEATURES: /content/data/vinvl/vinvl_vinvl
       SCENE_TEXT: /content/data/swintextspotter/swintextspotter

@@ -17,4 +17,3 @@ task = build_task(config)
 task.start()
 task.get_predictions()
 logger.info("Task done.")
-

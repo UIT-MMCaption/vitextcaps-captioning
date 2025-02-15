@@ -49,7 +49,8 @@ class TrainingMMF(OpenEndedTask):
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
 
     def evaluate_loss(self, dataloader):
-        self.model.eval()
+        # self.model.eval()
+        self.model.train()
         running_loss = .0
         with tqdm(desc='Epoch %d - Validation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
             with torch.no_grad():

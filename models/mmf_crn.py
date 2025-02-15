@@ -268,6 +268,7 @@ class CRN_MODEL(nn.Module):
             self._forward_mmt(items, fwd_results)
             self._forward_output(items, fwd_results)
         else:
+            self.train()
             dec_step_num = items.answer_tokens.size(1)
             # fill prev_inds with BOS_IDX at index 0, and zeros elsewhere
             fwd_results['prev_inds'] = torch.zeros_like(
@@ -285,6 +286,8 @@ class CRN_MODEL(nn.Module):
                 # decoding
                 argmax_inds = fwd_results["scores"].argmax(dim=-1)
                 fwd_results['prev_inds'][:, 1:] = argmax_inds[:, :-1]
+            self.eval()
+
 
 class Q(BertPreTrainedModel):
     def __init__(self, config):
@@ -382,6 +385,7 @@ class QT(BertPreTrainedModel):
         fwd_results['txt_emb'] = fwd_results['txt_emb'] + torch.tanh(mmt_seq_output[:, txt_begin:txt_end])
         fwd_results['ocr_mmt_in'] = fwd_results['ocr_mmt_in'] + torch.tanh(mmt_seq_output[:, txt_end:])
 
+
 class QTV(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -440,6 +444,7 @@ class QTV(BertPreTrainedModel):
         fwd_results['txt_emb'] = fwd_results['txt_emb'] + torch.tanh(mmt_seq_output[:, txt_begin:txt_end])
         fwd_results['obj_mmt_in'] = fwd_results['obj_mmt_in'] + torch.tanh(mmt_seq_output[:, txt_end:ocr_begin])
         fwd_results['ocr_mmt_in'] = fwd_results['ocr_mmt_in'] + torch.tanh(mmt_seq_output[:, ocr_begin:ocr_end])
+
 
 class MRG_Graph(nn.Module):
     def __init__(self, config):
