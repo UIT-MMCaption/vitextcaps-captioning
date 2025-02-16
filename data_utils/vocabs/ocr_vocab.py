@@ -88,7 +88,8 @@ class OcrVocab(Vocab):
             (in the index address space, the OOV tokens are after the fixed vocab)
         '''
         indices = []
-        for word in text:
+        for word in text[0].split(' '):
+            
             matched_inds = []
             # match answer to fixed vocab
             matched_inds.append(self.stoi[word])

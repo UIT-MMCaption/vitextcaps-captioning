@@ -263,5 +263,6 @@ class OcrDictionaryDataset(DictionaryDataset):
             question=" ".join(question),
             question_tokens=question_tokens,
             answers=answers,
+            answer_tokens=answer_tokens,
             answer_mask=answer_mask
         )

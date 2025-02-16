@@ -75,7 +75,7 @@ class TrainingMMF(OpenEndedTask):
         return val_loss
 
     def evaluate_metrics(self, dataloader):
-        self.model.eval()
+        self.model.train()
         gens = {}
         gts = {}
         with tqdm(desc='Epoch %d - Evaluation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
@@ -180,7 +180,7 @@ class TrainingMMF(OpenEndedTask):
 
         self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"), weights_only=True)
 
-        self.model.eval()
+        self.model.train()
         results = []
         overall_gens = {}
         overall_gts = {}
