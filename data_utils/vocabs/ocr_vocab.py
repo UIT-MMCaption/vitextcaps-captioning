@@ -90,6 +90,8 @@ class OcrVocab(Vocab):
         indices = []
         if isinstance(text, list):
             text = text[0].split(' ')
+        else:
+            text = text.split(' ')
         for word in text:
             matched_inds = []
             # match answer to fixed vocab
