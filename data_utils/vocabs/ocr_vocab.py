@@ -88,9 +88,9 @@ class OcrVocab(Vocab):
             (in the index address space, the OOV tokens are after the fixed vocab)
         '''
         indices = []
-        if isinstance(text, list) and text:
+        if isinstance(text, list) and len(text)==1:
             text = text[0].split(' ')
-        else:
+        elif isinstance(text, str):
             text = text.split(' ')
         for word in text:
             matched_inds = []
