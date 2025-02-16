@@ -88,7 +88,7 @@ class OcrVocab(Vocab):
             (in the index address space, the OOV tokens are after the fixed vocab)
         '''
         indices = []
-        if isinstance(text, list):
+        if isinstance(text, list) and text:
             text = text[0].split(' ')
         else:
             text = text.split(' ')
