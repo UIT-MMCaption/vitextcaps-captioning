@@ -178,7 +178,7 @@ class TrainingMMF(OpenEndedTask):
             logger.error("Prediction require the model must be trained. There is no weights to load for model prediction!")
             raise FileNotFoundError("Make sure your checkpoint path is correct or the best_model.pth is available in your checkpoint path")
 
-        self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"), weights_only=True)
+        self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
 
         self.model.train()
         results = []
