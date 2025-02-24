@@ -15,7 +15,6 @@ from builders.model_builder import META_ARCHITECTURE
 
 logger = setup_logger()
 
-
 @META_ARCHITECTURE.register()
 class CRN_MODEL(nn.Module):
     def __init__(self, config, vocab):
@@ -131,8 +130,6 @@ class CRN_MODEL(nn.Module):
         self._forward_txt_encoding(items, fwd_results)
         self._forward_obj_encoding(items, fwd_results)
         self._forward_ocr_encoding(items, fwd_results)
-
-        fwd_results['txt_mask'] = fwd_results['txt_mask'].squeeze()
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
@@ -346,6 +343,16 @@ class QT(BertPreTrainedModel):
         obj_emb = fwd_results['ocr_mmt_in'].squeeze()
         obj_mask = fwd_results['ocr_mask'].squeeze()
 
+        # Correct the shape
+        if len(txt_emb.size()) == 2:
+            txt_emb = txt_emb.unsqueeze(0)
+        if len(txt_mask.size()) == 1:
+            txt_mask = txt_mask.unsqueeze(0)
+        if len(obj_emb.size()) == 2:
+            obj_emb = obj_emb.unsqueeze(0)
+        if len(obj_mask.size()) == 1:
+            obj_mask = obj_mask.unsqueeze(0)
+        
         encoder_inputs = torch.cat(
             [txt_emb, obj_emb],
             dim=1
@@ -402,6 +409,22 @@ class QTV(BertPreTrainedModel):
         obj_mask = fwd_results['obj_mask'].squeeze()
         ocr_emb = fwd_results['ocr_mmt_in'].squeeze()
         ocr_mask = fwd_results['ocr_mask'].squeeze()
+
+        # Correct the shape
+        if len(txt_emb.size()) == 2:
+            txt_emb = txt_emb.unsqueeze(0)
+        if len(txt_mask.size()) == 1:
+            txt_mask = txt_mask.unsqueeze(0)
+
+        if len(obj_emb.size()) == 2:
+            obj_emb = obj_emb.unsqueeze(0)
+        if len(obj_mask.size()) == 1:
+            obj_mask = obj_mask.unsqueeze(0)
+        
+        if len(ocr_emb.size()) == 2:
+            ocr_emb = ocr_emb.unsqueeze(0)
+        if len(ocr_mask.size()) == 1:
+            ocr_mask = ocr_mask.unsqueeze(0)
 
         encoder_inputs = torch.cat(
             [txt_emb, obj_emb, ocr_emb],
@@ -526,6 +549,10 @@ class MRG_Graph(nn.Module):
         v_mask = fwd_results['obj_mask'].squeeze()
         t_mask = fwd_results['ocr_mask'].squeeze()
         
+        if len(v_mask.size()) == 1:
+            v_mask = v_mask.unsqueeze(0)
+            t_mask = t_mask.unsqueeze(0)
+
         # Use mean pooled visual features as context instead of question
         visual_context = v_feat.mean(dim=1, keepdim=True)
         
@@ -537,6 +564,9 @@ class MRG_Graph(nn.Module):
             t2v_edge, visual_context, t_mask, module_name='vt'
         )
         
+        if len(v_mask.size()) == 1:
+            v_mask = v_mask.unsqueeze(0)
+            t_mask = t_mask.unsqueeze(0)
         # Compute masks for interactions
         v2t_mask = torch.bmm(v_mask.unsqueeze(-1), t_mask.unsqueeze(1))
         t2v_mask = v2t_mask.transpose(1, 2)
@@ -562,7 +592,6 @@ class MRG_Graph(nn.Module):
         fwd_results['ocr_mmt_in'] = self.vt_drop(t_feat)
         
         return fwd_results
-
 
 
 def pad_or_truncate_embedding(embedding, target_length, pad_value=0):
@@ -591,6 +620,7 @@ def pad_or_truncate_embedding(embedding, target_length, pad_value=0):
         return torch.cat([embedding, padding], dim=1)
     return embedding
 
+
 class MMT(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -618,8 +648,10 @@ class MMT(BertPreTrainedModel):
         txt_emb = pad_or_truncate_embedding(txt_emb, txt_max_num)
         obj_emb = pad_or_truncate_embedding(obj_emb, obj_max_num)
         ocr_emb = pad_or_truncate_embedding(ocr_emb, ocr_max_num)
+
+        if len(txt_mask.size()) == 1:
+            txt_mask = txt_mask.unsqueeze(0).unsqueeze(0).unsqueeze(0)
         
-        txt_mask = txt_mask.unsqueeze(1).unsqueeze(1)
         
         # Get decoder embeddings
         dec_emb = self.prev_pred_embeddings(fixed_ans_emb, ocr_emb, prev_inds)
