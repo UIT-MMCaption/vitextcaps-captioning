@@ -130,6 +130,10 @@ class CRN_MODEL(nn.Module):
         self._forward_txt_encoding(items, fwd_results)
         self._forward_obj_encoding(items, fwd_results)
         self._forward_ocr_encoding(items, fwd_results)
+
+        # fwd_results['txt_mask'] = fwd_results['txt_mask']
+        if len(fwd_results['txt_mask'].size()) == 4:
+            fwd_results['txt_mask'] = fwd_results['txt_mask'].squeeze()
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
@@ -230,7 +234,6 @@ class CRN_MODEL(nn.Module):
         self.MRG(items, fwd_results)
 
     def _forward_mmt(self, items, fwd_results):
-        
 
         mmt_results = self.mmt(
             txt_emb=fwd_results["txt_emb"],
@@ -314,7 +317,7 @@ class Q(BertPreTrainedModel):
         )
 
         # flip the mask, so that invalid attention pairs have -10000.
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        # extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         assert not extended_attention_mask.requires_grad
         head_mask = [None] * self.config.num_hidden_layers
 
@@ -378,7 +381,7 @@ class QT(BertPreTrainedModel):
         )
 
         # flip the mask, so that invalid attention pairs have -10000.
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        # extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         assert not extended_attention_mask.requires_grad
         head_mask = [None] * self.config.num_hidden_layers
 
@@ -453,7 +456,7 @@ class QTV(BertPreTrainedModel):
         )
 
         # flip the mask, so that invalid attention pairs have -10000.
-        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        # extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         assert not extended_attention_mask.requires_grad
         head_mask = [None] * self.config.num_hidden_layers
 
@@ -529,7 +532,7 @@ class MRG_Graph(nn.Module):
         # Apply mask
         target_size = edge_feat.size(1)
         s = input_mask.size(-1)
-        input_mask = torch.nn.functional.pad(input_mask, (0, target_size-s), value=-100000.)
+        input_mask = torch.nn.functional.pad(input_mask, (0, target_size-s), value=0)
         
         A_edge_attn = A_edge_attn * input_mask.unsqueeze(-1)
         A_edge_attn = A_edge_attn / (A_edge_attn.sum(dim=-1, keepdim=True) + 1e-12)
@@ -552,6 +555,9 @@ class MRG_Graph(nn.Module):
         if len(v_mask.size()) == 1:
             v_mask = v_mask.unsqueeze(0)
             t_mask = t_mask.unsqueeze(0)
+            
+        v_mask = (v_mask == 0).float()
+        t_mask = (t_mask == 0).float()
 
         # Use mean pooled visual features as context instead of question
         visual_context = v_feat.mean(dim=1, keepdim=True)
@@ -564,9 +570,6 @@ class MRG_Graph(nn.Module):
             t2v_edge, visual_context, t_mask, module_name='vt'
         )
         
-        if len(v_mask.size()) == 1:
-            v_mask = v_mask.unsqueeze(0)
-            t_mask = t_mask.unsqueeze(0)
         # Compute masks for interactions
         v2t_mask = torch.bmm(v_mask.unsqueeze(-1), t_mask.unsqueeze(1))
         t2v_mask = v2t_mask.transpose(1, 2)
@@ -575,9 +578,9 @@ class MRG_Graph(nn.Module):
         
         # Pad features if necessary
         v_s = v_feat.size(1)
-        v_feat = torch.nn.functional.pad(v_feat, (0, 0, 0, 100-v_s), value=-100000.0)
+        v_feat = torch.nn.functional.pad(v_feat, (0, 0, 0, 100-v_s), value=0)
         t_s = t_feat.size(1)
-        t_feat = torch.nn.functional.pad(t_feat, (0, 0, 0, 50-t_s), value=-100000.0)
+        t_feat = torch.nn.functional.pad(t_feat, (0, 0, 0, 50-t_s), value=0)
         
         # Update features through cross-attention
         new_t_feat = torch.bmm(v2t_attn.transpose(1, 2), v_feat)
@@ -592,6 +595,7 @@ class MRG_Graph(nn.Module):
         fwd_results['ocr_mmt_in'] = self.vt_drop(t_feat)
         
         return fwd_results
+
 
 
 def pad_or_truncate_embedding(embedding, target_length, pad_value=0):
@@ -613,13 +617,12 @@ def pad_or_truncate_embedding(embedding, target_length, pad_value=0):
         return embedding[:, :target_length, :]
     elif curr_length < target_length:
         # Pad
-        padding = torch.full((batch_size, target_length - curr_length, hidden_dim), 
-                           pad_value, 
-                           dtype=embedding.dtype,
-                           device=embedding.device)
+        padding = torch.full((batch_size, target_length - curr_length, hidden_dim),
+                              pad_value,
+                              dtype=embedding.dtype,
+                              device=embedding.device)
         return torch.cat([embedding, padding], dim=1)
     return embedding
-
 
 class MMT(BertPreTrainedModel):
     def __init__(self, config):
@@ -639,6 +642,7 @@ class MMT(BertPreTrainedModel):
         fixed_ans_emb,
         prev_inds,
     ):
+        print(txt_mask.shape)
         # Get target lengths from masks
         txt_max_num = txt_mask.size(-1)
         obj_max_num = obj_mask.size(-1)
