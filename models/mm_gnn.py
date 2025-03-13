@@ -305,8 +305,7 @@ class MM_GNN_MODEL(nn.Module):
     def _forward_mmt_and_output(self, items, fwd_results):
 
         self._forward_gnn(items, fwd_results)
-        for k, v in fwd_results.items():
-            print(f"{k}: {v.shape}")
+        
         if self.training:
             fwd_results['prev_inds'] = items.answer_tokens.clone()
             self._forward_mmt(items, fwd_results)

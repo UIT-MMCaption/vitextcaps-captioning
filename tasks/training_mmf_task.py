@@ -2,20 +2,21 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn import NLLLoss
-
+from torch.utils.data import DataLoader
 from utils.logging_utils import setup_logger
 from tasks.open_ended_task import OpenEndedTask
 from builders.task_builder import META_TASK
 import evaluation
 import evaluate
 from pycocoevalcap.cider.cider import Cider
-
+from data_utils.utils import collate_fn
 import os
 from tqdm import tqdm
 import itertools
 from shutil import copyfile
 import json
-
+from builders.task_builder import META_TASK
+from torch.optim.lr_scheduler import LambdaLR
 logger = setup_logger()
 
 class BCEWithMaskLogitsLoss(nn.Module):
@@ -34,7 +35,7 @@ class BCEWithMaskLogitsLoss(nn.Module):
         losses = F.binary_cross_entropy_with_logits(input, scattered_target, reduction="none")
         losses = losses.masked_fill(loss_mask.unsqueeze(-1), value=0)
 
-        count = torch.max(torch.sum(loss_mask), torch.ones((1, )).to(loss_mask.device)) 
+        count = torch.max(torch.sum(loss_mask), torch.ones((1, )).to(loss_mask.device))
         loss = torch.sum(losses) / count
 
         return loss
@@ -43,10 +44,32 @@ class BCEWithMaskLogitsLoss(nn.Module):
 class TrainingMMF(OpenEndedTask):
     def __init__(self, config):
         super().__init__(config)
-
+        self.scheduler = LambdaLR(self.optim, self.lambda_lr)
         # self.loss_fn = BCEWithMaskLogitsLoss(ignore_index=self.vocab.padding_idx)
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
-        #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+        # self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
+        self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+
+    def create_dict_dataloaders(self, config):
+        # creating dictionary iterable-dataset data loader
+        self.train_dict_dataloader = DataLoader(
+            dataset=self.train_dict_dataset,
+            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.TRAINING_BEAM_SIZE,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
+
+        self.dev_dict_dataloader = DataLoader(
+            dataset=self.dev_dict_dataset,
+            batch_size=config.DATASET.DICT_DATASET.BATCH_SIZE // config.TRAINING.EVALUATING_BEAM_SIZE,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
+        self.test_dict_dataloader = DataLoader(
+            dataset=self.test_dict_dataset,
+            batch_size=32,
+            shuffle=True,
+            collate_fn=collate_fn
+        )
 
     def evaluate_loss(self, dataloader):
         # self.model.eval()
@@ -60,8 +83,8 @@ class TrainingMMF(OpenEndedTask):
                         results = self.model(items)
 
                     out = results["scores"].contiguous()
-                    # out = F.log_softmax(out, dim=-1)
-                    
+                    out = F.log_softmax(out, dim=-1)
+
                     shifted_right_answer_tokens = items.shifted_right_answer_tokens
                     loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     this_loss = loss.item()
@@ -107,7 +130,7 @@ class TrainingMMF(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 out = results["scores"].contiguous()
-                #out = F.log_softmax(out, dim=-1)
+                out = F.log_softmax(out, dim=-1)
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
@@ -118,7 +141,7 @@ class TrainingMMF(OpenEndedTask):
                 this_loss = loss.item()
                 running_loss += this_loss
 
-                pbar.set_postfix(loss=running_loss / (it + 1))
+                pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
 
@@ -164,7 +187,7 @@ class TrainingMMF(OpenEndedTask):
             })
 
             if best:
-                copyfile(os.path.join(self.checkpoint_path, "last_model.pth"), 
+                copyfile(os.path.join(self.checkpoint_path, "last_model.pth"),
                          os.path.join(self.checkpoint_path, "best_model.pth"))
 
             if exit_train:
