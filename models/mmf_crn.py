@@ -131,7 +131,6 @@ class CRN_MODEL(nn.Module):
         self._forward_obj_encoding(items, fwd_results)
         self._forward_ocr_encoding(items, fwd_results)
 
-        # fwd_results['txt_mask'] = fwd_results['txt_mask']
         if len(fwd_results['txt_mask'].size()) == 4:
             fwd_results['txt_mask'] = fwd_results['txt_mask'].squeeze()
         self._forward_mmt_and_output(items, fwd_results)
@@ -268,7 +267,7 @@ class CRN_MODEL(nn.Module):
             self._forward_mmt(items, fwd_results)
             self._forward_output(items, fwd_results)
         else:
-            self.train()
+            # self.train()
             dec_step_num = items.answer_tokens.size(1)
             # fill prev_inds with BOS_IDX at index 0, and zeros elsewhere
             fwd_results['prev_inds'] = torch.zeros_like(
@@ -286,7 +285,7 @@ class CRN_MODEL(nn.Module):
                 # decoding
                 argmax_inds = fwd_results["scores"].argmax(dim=-1)
                 fwd_results['prev_inds'][:, 1:] = argmax_inds[:, :-1]
-            self.eval()
+            # self.eval()
 
 
 class Q(BertPreTrainedModel):
@@ -551,7 +550,7 @@ class MRG_Graph(nn.Module):
         
         v_mask = fwd_results['obj_mask'].squeeze()
         t_mask = fwd_results['ocr_mask'].squeeze()
-        
+
         if len(v_mask.size()) == 1:
             v_mask = v_mask.unsqueeze(0)
             t_mask = t_mask.unsqueeze(0)
@@ -569,7 +568,9 @@ class MRG_Graph(nn.Module):
         t2v_attn, t2v_feat, t_mask = self._build_compute_graph(
             t2v_edge, visual_context, t_mask, module_name='vt'
         )
-        
+        if len(v_mask.size()) == 1:
+            v_mask = v_mask.unsqueeze(0)
+            t_mask = t_mask.unsqueeze(0)
         # Compute masks for interactions
         v2t_mask = torch.bmm(v_mask.unsqueeze(-1), t_mask.unsqueeze(1))
         t2v_mask = v2t_mask.transpose(1, 2)
@@ -624,6 +625,7 @@ def pad_or_truncate_embedding(embedding, target_length, pad_value=0):
         return torch.cat([embedding, padding], dim=1)
     return embedding
 
+
 class MMT(BertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -642,7 +644,7 @@ class MMT(BertPreTrainedModel):
         fixed_ans_emb,
         prev_inds,
     ):
-        print(txt_mask.shape)
+        
         # Get target lengths from masks
         txt_max_num = txt_mask.size(-1)
         obj_max_num = obj_mask.size(-1)
@@ -655,8 +657,8 @@ class MMT(BertPreTrainedModel):
 
         if len(txt_mask.size()) == 1:
             txt_mask = txt_mask.unsqueeze(0).unsqueeze(0).unsqueeze(0)
-        
-        
+        if len(txt_mask.size()) == 2:
+            txt_mask = txt_mask.unsqueeze(1).unsqueeze(1)
         # Get decoder embeddings
         dec_emb = self.prev_pred_embeddings(fixed_ans_emb, ocr_emb, prev_inds)
         
