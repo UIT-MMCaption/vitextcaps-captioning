@@ -5,6 +5,49 @@ from builders.model_builder import META_ARCHITECTURE
 import torch.nn.functional as F
 import math
 
+@META_ARCHITECTURE.register()
+class AoA_Model(nn.Module):
+    def __init__(self, config, vocab):
+        super(AoA_Model, self).__init__()
+        self.vocab = vocab
+        self.refiner_layer = AoA_Refiner_Core(config.REFINE_LAYER.NUM_HEADS,
+                                              config.REFINE_LAYER.STACK_LAYERS,
+                                              config.REFINE_LAYER.FEATURE_SIZE,
+                                              config.REFINE_LAYER.OUT_SIZE)
+        self.decoder_layer = AoA_Decoder_Core(config.DECODER.EMBEDDING_LAYERS,
+                                              config.DECODER.NUM_HEADS,
+                                              config.DECODER.FEATURE_SIZE,
+                                              config.DECODER.EMBEDDING_SIZE,
+                                              config.DECODER.VOCAB_SIZE)
+
+        self.d_model = config.D_MODEL
+        self.initialize_weights()
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if hasattr(m, 'weight') and m.weight.dim() > 1:
+                nn.init.xavier_uniform_(m.weight.data)
+
+    def forward(self, sample):
+        out = dict()
+        refined_features = self.refiner_layer(sample['region_features']) # batch_size, img_size, features_size
+        
+        if self.training:
+            decoded_outputs = self.decoder_layer(refined_features, 
+                                                 sample['answer_tokens'].type(torch.long).squeeze(), 
+                                                 sample['answer_masks'].type(torch.long).squeeze())
+        else:
+            input_ids = torch.zeros_like(sample['answer_tokens'].squeeze(), dtype=torch.long)
+            if len(input_ids.size()) < 2:
+                input_ids = input_ids.unsqueeze(0)
+            input_ids[:, 0] = 1
+            decoded_outputs = self.decoder_layer(refined_features, 
+                                                 input_ids, 
+                                                 sample['answer_masks'].type(torch.long).squeeze())
+        
+        out['scores'] = decoded_outputs 
+        return out
+
 
 class MultiHeadedDotAttention(nn.Module):
     def __init__(self, num_heads, features_size, dropout=0.1):
@@ -196,43 +239,3 @@ class AoA_Decoder_Core(nn.Module):
         return self.out_linear(self.out_dropout(residual_aoa)) # batch_size, sequence_length, vocab_size
 
 
-@META_ARCHITECTURE.register()
-class AoA_Model(nn.Module):
-    def __init__(self, config, vocab):
-        super(AoA_Model, self).__init__()
-        self.vocab = vocab
-        self.refiner_layer = AoA_Refiner_Core(config.REFINE_LAYER.NUM_HEADS,
-                                              config.REFINE_LAYER.STACK_LAYERS,
-                                              config.REFINE_LAYER.FEATURE_SIZE,
-                                              config.REFINE_LAYER.OUT_SIZE)
-        self.decoder_layer = AoA_Decoder_Core(config.DECODER.EMBEDDING_LAYERS,
-                                              config.DECODER.NUM_HEADS,
-                                              config.DECODER.FEATURE_SIZE,
-                                              config.DECODER.EMBEDDING_SIZE,
-                                              config.DECODER.VOCAB_SIZE)
-
-        self.d_model = config.D_MODEL
-        self.initialize_weights()
-
-    def initialize_weights(self):
-        for m in self.modules():
-            if hasattr(m, 'weight') and m.weight.dim() > 1:
-                nn.init.xavier_uniform_(m.weight.data)
-
-    def forward(self, sample):
-        refined_features = self.refiner_layer(sample['region_features']) # batch_size, img_size, features_size
-        if self.training:
-            decoded_outputs = self.decoder_layer(refined_features, 
-                                                 sample['answer_tokens'].type(torch.long).squeeze(), 
-                                                 sample['answer_masks'].type(torch.long).squeeze())
-        else:
-            input_ids = torch.zeros_like(sample['answer_tokens'].squeeze(), dtype=torch.long)
-            if len(input_ids.size()) < 2:
-                input_ids = input_ids.unsqueeze(0)
-            input_ids[:, 0] = 1
-            decoded_outputs = self.decoder_layer(refined_features, 
-                                                 input_ids, 
-                                                 sample['answer_masks'].type(torch.long).squeeze())
-            
-        return decoded_outputs
-    
