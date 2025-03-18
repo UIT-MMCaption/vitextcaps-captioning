@@ -1,47 +1,45 @@
-import torch
-from torch import nn
-from torch.nn import functional as F
-
-from utils.logging_utils import setup_logger
-from tasks.open_ended_task import OpenEndedTask
-from builders.task_builder import META_TASK
-import evaluation
-from pycocoevalcap.cider.cider import Cider
-from data_utils.utils import get_tokenizer
 import os
 from tqdm import tqdm
 import itertools
 from shutil import copyfile
 import json
+
+import torch
+from torch import nn
+from torch.nn import functional as F
 from torch.optim import Adam
-from torch.autograd import Variable
+from torch.optim.lr_scheduler import LambdaLR
+from torch.nn import NLLLoss
+
+from utils.logging_utils import setup_logger
+from tasks.open_ended_task import OpenEndedTask
+from builders.task_builder import META_TASK
+import evaluation
+from data_utils.utils import get_tokenizer
 
 logger = setup_logger()
 
 
-class LanguageModelCriterion(nn.Module):
-    def __init__(self):
-        super(LanguageModelCriterion, self).__init__()
-        self.loss_fn = nn.CrossEntropyLoss(reduction='none')
-        
-    def forward(self, logits, target, mask):
-        """
-        logits: shape of (N, seq_len, vocab_size)
-        target: shape of (N, seq_len)
-        mask: shape of (N, seq_len)
-        """
-        # truncate to the same size
-        target = target[:, :logits.shape[1]]
-        mask = mask[:, :logits.shape[1]]
-        
-        logits = logits.contiguous().view(-1, logits.shape[2])
-        target = target.contiguous().view(-1)
-        mask = mask.contiguous().view(-1)
-        
-        loss = self.loss_fn(logits, target)
-        masked_loss = loss * mask
-        output = masked_loss.sum() / mask.sum()  # Average over actual tokens
-        return output
+class BCEWithMaskLogitsLoss(nn.Module):
+    def __init__(self, ignore_index=0):
+        super().__init__()
+
+        self.ignore_index = ignore_index
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor):
+        loss_mask = (target == self.ignore_index)
+
+        source = torch.ones_like(input)
+        scattered_target = torch.zeros_like(input)
+        scattered_target.scatter_(dim=-1, index=target.unsqueeze(-1), src=source)
+
+        losses = F.binary_cross_entropy_with_logits(input, scattered_target, reduction="none")
+        losses = losses.masked_fill(loss_mask.unsqueeze(-1), value=0)
+
+        count = torch.max(torch.sum(loss_mask), torch.ones((1, )).to(loss_mask.device))
+        loss = torch.sum(losses) / count
+
+        return loss
 
 
 @META_TASK.register()
@@ -50,10 +48,9 @@ class TrainingAoA(OpenEndedTask):
         super().__init__(config)
         self.config = config
         self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
-        self.optim = Adam(self.model.parameters(), lr=config.TRAINING.LEARNING_RATE, betas=(0.9, 0.98))
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optim, gamma=0.98)
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=0)
-
+        self.scheduler = LambdaLR(self.optim, self.lambda_lr)
+        self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+        
     def evaluate_loss(self, dataloader):
         self.model.eval()
         running_loss = .0
@@ -62,21 +59,14 @@ class TrainingAoA(OpenEndedTask):
                 for it, items in enumerate(dataloader):
                     items = items.to(self.device)
                     with torch.no_grad():
-                        outs = self.model(items)
+                        results = self.model(items)
                     
-                    shifted_right_answer_tokens = items.answer_tokens.squeeze()
-                    # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                    
-                    answer_masks = items.answer_masks.squeeze()
-                    
-                    # caption_loss = self.loss_fn(outs, 
-                    #                             shifted_right_answer_tokens, 
-                    #                             answer_masks)
-                    
-                    caption_loss = self.loss_fn(outs.contiguous().view(-1, outs.shape[2]), 
-                                                shifted_right_answer_tokens.contiguous().view(-1))
-                    
-                    this_loss = caption_loss.item()
+                    out = results["scores"].contiguous()
+                    out = F.log_softmax(out, dim=-1)
+
+                    shifted_right_answer_tokens = items.shifted_right_answer_tokens
+                    loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
+                    this_loss = loss.item()
                     running_loss += this_loss
 
                     pbar.set_postfix(loss=running_loss / (it + 1))
@@ -87,21 +77,22 @@ class TrainingAoA(OpenEndedTask):
         return val_loss
 
     def evaluate_metrics(self, dataloader):
-        self.model.eval()
+        self.model.train()
         gens = {}
         gts = {}
         with tqdm(desc='Epoch %d - Evaluation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
             for it, items in enumerate(dataloader):
                 items = items.to(self.device)
                 with torch.no_grad():
-                    outs = self.model(items)
-                answers_gen_ids = outs.argmax(dim=-1)
+                    results = self.model(items)
+                outs = results["scores"].argmax(dim=-1)
+
                 answers_gt = items.answers
-                answers_gen = self.tokenizer.batch_decode(answers_gen_ids,
-                                                          skip_special_tokens=True)
+                answers_gen = self.vocab.decode_answer(outs.contiguous(),
+                                                       items.ocr_tokens,
+                                                       join_words=False)
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
-                    words = gen_i.split()
-                    gen_i = ' '.join([k for k, g in itertools.groupby(words)])
+                    gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
                     gts['%d_%d' % (it, i)] = gts_i
                 pbar.update()
@@ -115,32 +106,21 @@ class TrainingAoA(OpenEndedTask):
         running_loss = .0
         with tqdm(desc='Epoch %d - Training with cross-entropy loss' % self.epoch, unit='it', total=len(self.train_dataloader)) as pbar:
             for it, items in enumerate(self.train_dataloader):
-                # self.adjust_learning_rate(self.optim, self.epoch)
                 items = items.to(self.device)
-                out = self.model(items)
+                results = self.model(items)
+                out = results["scores"].contiguous()
+                out = F.log_softmax(out, dim=-1)
 
-                shifted_right_answer_tokens = items.answer_tokens.squeeze()
-                    
-                answer_masks = items.answer_masks.squeeze()
+                shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                
-                # caption_loss = self.loss_fn(out, 
-                #                             shifted_right_answer_tokens, 
-                #                             answer_masks)
-                
-                caption_loss = self.loss_fn(out.contiguous().view(-1, out.shape[2]), 
-                                            shifted_right_answer_tokens.contiguous().view(-1))
-                
-                loss = caption_loss
-                
+                loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                 loss.backward()
-                    
+
                 self.optim.step()
                 this_loss = loss.item()
                 running_loss += this_loss
 
-                pbar.set_postfix(loss=running_loss / (it + 1))
+                pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
 
