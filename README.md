@@ -1,34 +1,35 @@
-# vitextcaps captioning
 
-Mục tiêu của dự án là tạo chú thích cho hình ảnh một cách chính xác và hiệu quả.
+# VITEXTCAPS
 
-## Hướng dẫn Cài đặt và Chạy
+## Introduction
+This guide provides a rewritten `README.md` for the **VITEXTCAPS-Captioning** repository, designed to be concise and professional, similar to those from major tech organizations like Meta. It focuses on supporting image captioning tasks, particularly for the Vietnamese language, using the **VITEXTCAPS** dataset.
 
-1. **Clone Repository**
+## Repository Overview
+The **VITEXTCAPS-Captioning** repository contains source code for training, evaluating, and generating captions for image captioning models. 
 
-   Đầu tiên, clone repository về máy của bạn bằng lệnh sau:
+## Installation Steps
+To set up, clone the repository from GitHub and install dependencies:
 
-   ```bash
-   !git clone -b NhiNguyen34-patch-1 https://github.com/NhiNguyen34/vitextcaps-captioning.git
+1. Ensure **Python 3.8** or higher is installed.
+2. Run `pip install -r requirements.txt` for additional libraries.
 
-2. Cài đặt các thư viện cần thiết:
-    ```bash
-    %cd vitextcaps-captioning 
-    !pip install -r requirements.txt
+## Dataset Access
+The **VITEXTCAPS** dataset, comprising **15,640 images** and **74,712 captions**, is not directly provided. Research suggests users should contact the authors or refer to the original paper for access, as it’s not publicly downloadable based on available information.
 
-3. Tạo thư mục và giải nén dữ liệu:
-       ```bash
+## Usage Instructions
+Update soon.
 
-        !mkdir -p /content/vitextcaps-captioning/data/fasttext
-   
-        %cd /content/vitextcaps-captioning/data/fasttext
-        !unzip /content/drive/MyDrive/ViTextCap/Data/newData/fasttext.zip
-        
-        %cd /content/vitextcaps-captioning/data
-        !unzip /content/drive/MyDrive/ViTextCap/Data/features/vinvl_vinvl.zip
-        !unzip /content/drive/MyDrive/ViTextCap/Data/features/swintextspotter.zip 
+## Contributing and Licensing
+Contributions are welcome; please open an issue or pull request on GitHub. The project is licensed under the **MIT License**, details in the `LICENSE` file.
 
-5. Chạy mô hình:
-      ```bash
-      
-      !python /content/vitextcaps-captioning/train.py --config-file /content/vitextcaps-captioning/configs/mmf_m4c_captioner.yaml
+## Citations
+For research use, cite the paper with the following placeholder details:
+
+```bibtex
+@article{vitextcaps,
+  title={VITEXTCAPS: A Vietnamese Dataset for Image Captioning with Reading Comprehension},
+  author={Author1, Author2, ...},
+  journal={...},
+  year={2025}
+}
+```
