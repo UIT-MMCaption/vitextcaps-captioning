@@ -25,6 +25,9 @@ class ViWordVocab(Vocab):
             tok: i for i, tok in enumerate(self.specials + phonemes)
         }
 
+        # only padding token is not allowed to be shown
+        self.specials = [self.padding_token]
+
     def initialize_special_tokens(self, config) -> None:
         self.padding_token = config.PAD_TOKEN
         self.bos_token = config.BOS_TOKEN
@@ -61,7 +64,9 @@ class ViWordVocab(Vocab):
         return phonemes
 
     def encode_caption(self, caption: List[str]) -> torch.Tensor:
-        syllables = []
+        syllables = [
+            (self.bos_idx, self.padding_idx, self.padding_idx, self.padding_idx)
+        ]
         for word in caption:
             is_Vietnamese_word, components = is_Vietnamese(word)
             if is_Vietnamese_word:
@@ -72,6 +77,10 @@ class ViWordVocab(Vocab):
                 syllables.append(
                     (self.unk_idx, self.padding_idx, self.padding_idx, self.padding_idx)
                 )
+
+        syllables.append(
+            (self.eos_idx, self.padding_idx, self.padding_idx, self.padding_idx)
+        )
 
         vec = torch.tensor(syllables).long()
 
@@ -97,7 +106,21 @@ class ViWordVocab(Vocab):
             if is_Vietnamese_word:
                 sentence.append(word)
             else:
+                if onset == self.bos_token:
+                    sentence.append(self.bos_token)
+                    continue
+                
+                if onset == self.eos_token:
+                    sentence.append(self.eos_token)
+                    continue
+                
                 sentence.append(self.unk_token)
+
+        # remove the <bos> and <eos> token
+        if sentence[0] == self.bos_token:
+            sentence = sentence[1:]
+        if sentence[-1] == self.eos_token:
+            sentence = sentence[:-1]
 
         if join_words:
             return " ".join(sentence)
