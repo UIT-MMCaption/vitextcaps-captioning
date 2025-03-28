@@ -29,7 +29,7 @@ class Vocab(object):
             config.JSON_PATH.TEST
         ])
         counter = self.freqs.copy()
-    
+
         min_freq = max(config.MIN_FREQ, 1)
 
         specials = [self.padding_token, self.bos_token, self.eos_token, self.unk_token]
@@ -72,16 +72,15 @@ class Vocab(object):
             with open(json_dir, 'r', encoding='utf-8') as file:
                 json_data = json.load(file)
             # json_data = json.load(open(json_dir))
-            for ann in json_data["annotations"]:
-                for answer in ann["answers"]:
-                    question = preprocess_sentence(ann["question"], self.tokenizer)
-                    answer = preprocess_sentence(answer, self.tokenizer)
-                    self.freqs.update(question)
-                    self.freqs.update(answer)
-                    if len(question) + 2 > self.max_question_length:
-                            self.max_question_length = len(question) + 2
-                    if len(answer) + 2 > self.max_answer_length:
-                        self.max_answer_length = len(answer) + 2
+            for k, v in json_data.items():
+                question = preprocess_sentence(" ", self.tokenizer)
+                answer = preprocess_sentence(v['caption'], self.tokenizer)
+                self.freqs.update(question)
+                self.freqs.update(answer)
+                if len(question) + 2 > self.max_question_length:
+                        self.max_question_length = len(question) + 2
+                if len(answer) + 2 > self.max_answer_length:
+                    self.max_answer_length = len(answer) + 2
 
     def encode_question(self, question: List[str]) -> torch.Tensor:
         """ Turn a question into a vector of indices and a question length """
@@ -179,4 +178,4 @@ class Vocab(object):
                 self.word_embeddings[i] = word_embeddings[we_index]
             else:
                 self.word_embeddings[i] = unk_init(self.word_embeddings[i])
-                
+

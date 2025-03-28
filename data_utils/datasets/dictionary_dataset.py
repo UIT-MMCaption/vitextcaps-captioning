@@ -12,22 +12,19 @@ class DictionaryDataset(BaseDataset):
 
     def load_annotations(self, json_data: Dict) -> List[Dict]:
         annotations = []
-        for ann in json_data["annotations"]:
+        for k, v in json_data.items():
             # find the appropriate image
-            for image in json_data["images"]:
-                if image["id"] == ann["image_id"]:
-                    question = preprocess_sentence(ann["question"], self.vocab.tokenizer)
-                    answers = [preprocess_sentence(answer, self.vocab.tokenizer) for answer in ann["answers"]]
-                    answers = [" ".join(answer) for answer in answers]
-                    annotation = {
-                        "question_id": ann["id"],
-                        "type": ann["QA-type"],
-                        "question": question,
-                        "answers": answers,
-                        "image_id": ann["image_id"],
-                        "filename": image["filename"]
-                    }
-                    break
+            question = preprocess_sentence(" ", self.vocab.tokenizer)
+            answers = preprocess_sentence(v['caption'], self.vocab.tokenizer)
+            # answers = [" ".join(answer) for answer in answers]
+            annotation = {
+                "question_id": " ",
+                "type": " ",
+                "question": question,
+                "answers": answers,
+                "image_id": v["image_id"],
+                "filename": k
+            }
 
             annotations.append(annotation)
 

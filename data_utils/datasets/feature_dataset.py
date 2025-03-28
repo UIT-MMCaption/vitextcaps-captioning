@@ -22,21 +22,18 @@ class FeatureDataset(BaseDataset):
 
     def load_annotations(self, json_data: Dict) -> List[Dict]:
         annotations = []
-        for ann in json_data["annotations"]:
+        for k, v in json_data.items():
             # find the appropriate image
-            for image in json_data["images"]:
-                if image["id"] == ann["image_id"]:
-                    for answer in ann["answers"]:
-                        question = preprocess_sentence(ann["question"], self.vocab.tokenizer)
-                        answer = preprocess_sentence(answer, self.vocab.tokenizer)
-                        annotation = {
-                            "question": question,
-                            "answer": answer,
-                            "image_id": ann["image_id"],
-                            "filename": image["filename"]
-                        }
-                        annotations.append(annotation)
-                    break
+            question = preprocess_sentence(" ", self.vocab.tokenizer)
+            answer = preprocess_sentence(v['caption'], self.vocab.tokenizer)
+            annotation = {
+                "question": question,
+                "answer": answer,
+                "image_id": v["image_id"],
+                "filename": k
+            }
+            annotations.append(annotation)
+
         return annotations
 
     def __getitem__(self, idx: int):
@@ -47,7 +44,7 @@ class FeatureDataset(BaseDataset):
         shifted_right_answer = torch.zeros_like(answer).fill_(self.vocab.padding_idx)
         shifted_right_answer[:-1] = answer[1:]
         answer = torch.where(answer == self.vocab.eos_idx, self.vocab.padding_idx, answer) # remove eos_token in answer
-        
+
         features = self.load_features(self.annotations[idx]["image_id"])
 
         return Instance(
