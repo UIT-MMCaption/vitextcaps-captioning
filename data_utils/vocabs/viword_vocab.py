@@ -14,7 +14,8 @@ class ViWordVocab(Vocab):
         self.tokenizer = config.TOKENIZER
 
         self.initialize_special_tokens(config)
-        
+        self.max_question_length = 0
+        self.max_answer_length = 0
         phonemes = self.make_vocab(config.JSON_PATH)
         phonemes = list(phonemes)
         self.itos = {
