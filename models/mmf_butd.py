@@ -20,7 +20,7 @@ class LanguageDecoder(nn.Module):
         self.fc.weight.data.uniform_(-0.1, 0.1)
 
     def forward(self, weighted_attn, state):
-        device = self.fc.weight.device  
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         
         weighted_attn = weighted_attn.to(device)
         h1, c1 = state["td_hidden"]
