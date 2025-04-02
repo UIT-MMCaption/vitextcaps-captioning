@@ -12,3 +12,4 @@ from .ocr_classification_dataset import OcrClassificationDataset
 from .raw_question_datasets import RawQuestionFeatureDataset, RawQuestionDictionaryDataset
 from .raw_question_multilingual_datasets import RawQuestionMultilingualFeatureDataset, RawQuestionMultilingualDictionaryDataset
 from .vitextcap_dataset import ViTCDictionaryDataset, ViTCFeatureDataset
+from .viword_dataset import ViWordFeatureDataset, ViWordDictionaryDataset
