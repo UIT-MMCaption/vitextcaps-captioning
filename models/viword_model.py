@@ -109,7 +109,8 @@ class VIWORD_MODEL(nn.Module):
         # remove the OCR copying dimensions in LoRRA's classifier output
         # (OCR copying will be handled separately)
         classifier_head = nn.ModuleList([
-            nn.Linear(self.mmt_config.hidden_size, len(self.vocab)) for _ in range(config.N_FUTURE_TOKENS)
+            nn.Linear(self.mmt_config.hidden_size, len(self.vocab)) 
+            for _ in range(4)
         ])
 
         self.mtp_heads = nn.ModuleList([
@@ -221,7 +222,6 @@ class VIWORD_MODEL(nn.Module):
             obj_mask=fwd_results["obj_mask"],
             ocr_emb=fwd_results["ocr_mmt_in"],
             ocr_mask=fwd_results["ocr_mask"],
-            fixed_ans_emb=self.classifier.weight,
             prev_inds=fwd_results["prev_inds"],
         )
         fwd_results.update(mmt_results)
@@ -296,10 +296,10 @@ class TextBert(BertPreTrainedModel):
 
 
 class MMT(BertPreTrainedModel):
-    def __init__(self, config):
-        super().__init__(config, vocab)
+    def __init__(self, config, vocab):
+        super().__init__(config)
 
-        self.prev_pred_embeddings = PrevPredEmbeddings(config)
+        self.prev_pred_embeddings = PrevPredEmbeddings(config, vocab)
         self.encoder = BertEncoder(config)
         self.init_weights()
 
@@ -311,13 +311,12 @@ class MMT(BertPreTrainedModel):
         obj_mask,
         ocr_emb,
         ocr_mask,
-        fixed_ans_emb,
         prev_inds,
     ):
 
         # build embeddings for predictions in previous decoding steps
         # fixed_ans_emb is an embedding lookup table for each fixed vocabulary
-        dec_emb = self.prev_pred_embeddings(fixed_ans_emb, ocr_emb, prev_inds)
+        dec_emb = self.prev_pred_embeddings(prev_inds)
 
         # a zero mask for decoding steps, so the encoding steps elements can't
         # attend to decoding steps.
@@ -418,7 +417,7 @@ class PrevPredEmbeddings(nn.Module):
         hidden_size = config.hidden_size
         ln_eps = config.layer_norm_eps
 
-        self.caption_embeddings = WordRepresentation(len(vocab), hidden_size)
+        self.caption_embeddings = WordRepresentation(vocab, hidden_size)
         self.position_embeddings = nn.Embedding(MAX_DEC_LENGTH, hidden_size)
 
         self.emb_layer_norm = nn.LayerNorm(hidden_size, eps=ln_eps)
