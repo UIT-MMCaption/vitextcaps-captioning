@@ -28,3 +28,4 @@ from .aoa import AoA_Model
 from .mmf_crn import CRN_MODEL
 from .mm_gnn import MM_GNN_MODEL
 from .mmf_butd import MMF_BUTD
+from .viword_model import VIWORD_MODEL
