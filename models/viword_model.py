@@ -251,11 +251,11 @@ class VIWORD_MODEL(nn.Module):
             self._forward_output(items, fwd_results)
         else:
             # fill prev_inds with bos_idx at index 0, and zeros elsewhere
-            fwd_results["prev_inds"] = torch.zeros((items.batch_size, self.max_iter)).long().to(self.device)
-            fwd_results["prev_inds"][:, 0] = self.vocab.bos_idx
+            fwd_results["prev_inds"] = torch.zeros((items.batch_size, 410, 4)).long().to(self.device)
+            fwd_results['prev_inds'][:, 0, 0]  = self.vocab.bos_idx
 
             # greedy decoding at test time
-            last_ids = torch.zeros((items.batch_size, )).to(self.device)
+            last_ids = torch.zeros((items.batch_size, 4)).to(self.device)
             for ith in range(self.max_iter):
                 self._forward_mmt(items, fwd_results)
                 self._forward_output(items, fwd_results)
@@ -424,12 +424,11 @@ class PrevPredEmbeddings(nn.Module):
         self.emb_dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, prev_inds):
-        assert prev_inds.dtype == torch.long
 
         batch_size = prev_inds.size(0)
         seq_length = prev_inds.size(1)
 
-        token_emb = self.caption_embeddings(prev_inds)
+        token_emb = self.caption_embeddings(prev_inds.type(torch.long))
 
         position_ids = torch.arange(seq_length, dtype=torch.long, device=prev_inds.device)
         position_ids = position_ids.unsqueeze(0).expand(batch_size, seq_length)
