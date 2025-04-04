@@ -235,18 +235,22 @@ class VIWORD_MODEL(nn.Module):
                 for linear in cls:
                     temp.append(linear(mmt_dec_output))
                 preds.append(torch.stack(temp, dim=2))
-            preds = torch.stack(preds, dim=2)
+            del temp
 
         else:
             for linear in self.mtp_heads[0]:
-                temp.append(linear(mmt_dec_output))
-            preds = torch.stack(temp, dim=2)
+                preds.append(linear(mmt_dec_output))
+            preds = torch.stack(preds, dim=2)
 
         fwd_results["scores"] = preds
 
     def _forward_mmt_and_output(self, items, fwd_results):
         if self.training:
-            fwd_results["prev_inds"] = items.answer_tokens.clone()
+            answer_tokens = items.answer_tokens.clone()
+            fwd_results["prev_inds"] = torch.stack([
+                F.pad(answer_tokens[i], (0, 0, 0, 410 - answer_tokens.shape[1])) 
+                for i in range(answer_tokens.size(0))
+            ])
             self._forward_mmt(items, fwd_results)
             self._forward_output(items, fwd_results)
         else:
