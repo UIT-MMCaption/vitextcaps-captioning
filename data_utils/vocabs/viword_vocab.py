@@ -44,7 +44,7 @@ class ViWordVocab(Vocab):
         json_paths = [config.TRAIN, config.DEV, config.TEST]
         phonemes = set()
         self.max_question_length = 2
-        self.max_answer_length = 0
+        self.max_answer_length = 410
         # Collect token stats from each JSON
         for path in json_paths:
             if not os.path.exists(path):
@@ -55,8 +55,6 @@ class ViWordVocab(Vocab):
             for key in data:
                 item = data[key]
                 caption = item["caption"]
-                if len(caption) + 2 > self.max_answer_length:
-                    self.max_answer_length = len(caption) + 2
                 words = preprocess_sentence(caption)
                 for word in words:
                     is_Vietnamese_word, components = is_Vietnamese(word)
