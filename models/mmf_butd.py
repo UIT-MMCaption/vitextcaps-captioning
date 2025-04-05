@@ -105,7 +105,7 @@ class MMF_BUTD(nn.Module):
     def prepare_data(self, sample_list, batch_size):
         self.teacher_forcing = "answer_tokens" in sample_list
         data = {}
-        lengths = (torch.tensor(sample_list["answer_tokens"]) != 0).sum(dim=1)
+        lengths = (torch.tensor(sample_list["answer_tokens"].clone().detach()) != 0).sum(dim=1)
         data["decode_lengths"] = (lengths - 1).tolist()  # Bỏ token <SOS>
         data["texts"] = torch.tensor(sample_list["answer_tokens"]).to(self.device)  # (bs, max_len)
         timesteps = max(data["decode_lengths"])
@@ -120,7 +120,8 @@ class MMF_BUTD(nn.Module):
         return attention_feature, attn_weights
     
     def forward(self, sample_list):
-        batch_size = len(sample_list["answers"])  
+        batch_size = len(sample_list["answers"]) 
+ 
         scores = torch.ones((batch_size, self.max_len, self.vocab_size), dtype=torch.float, device=self.device)  # (bs, max_len, vocab_size)
 
         data, sample_list, timesteps = self.prepare_data(sample_list, batch_size)
