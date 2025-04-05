@@ -32,6 +32,7 @@ class VIWORD_MODEL(nn.Module):
         self.d_model = self.mmt_config.hidden_size
         self.device = config.DEVICE
         self.max_iter = vocab.max_answer_length
+        self.max_iter = 410
         print('vocab.max_answer_length', vocab.max_answer_length)
 
         self.build()
@@ -248,14 +249,14 @@ class VIWORD_MODEL(nn.Module):
         if self.training:
             answer_tokens = items.answer_tokens.clone()
             fwd_results["prev_inds"] = torch.stack([
-                F.pad(answer_tokens[i], (0, 0, 0, 410 - answer_tokens.shape[1])) 
+                F.pad(answer_tokens[i], (0, 0, 0, self.max_iter - answer_tokens.shape[1])) 
                 for i in range(answer_tokens.size(0))
             ])
             self._forward_mmt(items, fwd_results)
             self._forward_output(items, fwd_results)
         else:
             # fill prev_inds with bos_idx at index 0, and zeros elsewhere
-            fwd_results["prev_inds"] = torch.zeros((items.batch_size, 410, 4)).long().to(self.device)
+            fwd_results["prev_inds"] = torch.zeros((items.batch_size, self.max_iter, 4)).long().to(self.device)
             fwd_results['prev_inds'][:, 0, 0]  = self.vocab.bos_idx
 
             # greedy decoding at test time
