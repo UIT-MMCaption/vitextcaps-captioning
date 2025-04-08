@@ -70,8 +70,8 @@ class TrainingViWord(OpenEndedTask):
         )
 
     def evaluate_loss(self, dataloader):
-        # self.model.eval()
-        self.model.train()
+        self.model.eval()
+        # self.model.train()
         running_loss = .0
         with tqdm(desc='Epoch %d - Validation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
             with torch.no_grad():
@@ -84,6 +84,11 @@ class TrainingViWord(OpenEndedTask):
                     out = F.log_softmax(out, dim=-1)
 
                     shifted_right_answer_tokens = items.shifted_right_answer_tokens
+                    shifted_right_answer_tokens = torch.stack([
+                                        F.pad(items.shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - items.shifted_right_answer_tokens.shape[1]))
+                                        for i in range(items.shifted_right_answer_tokens.size(0))
+                                    ])
+                    
                     loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     this_loss = loss.item()
                     running_loss += this_loss
@@ -96,7 +101,7 @@ class TrainingViWord(OpenEndedTask):
         return val_loss
 
     def evaluate_metrics(self, dataloader):
-        self.model.train()
+        self.model.eval()
         gens = {}
         gts = {}
         with tqdm(desc='Epoch %d - Evaluation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
@@ -107,9 +112,10 @@ class TrainingViWord(OpenEndedTask):
                 outs = results["scores"].argmax(dim=-1)
 
                 answers_gt = items.answers
-                answers_gen = self.vocab.decode_answer(outs.contiguous(),
-                                                       items.ocr_tokens,
+                answers_gen = self.vocab.decode_caption(outs.contiguous(),
                                                        join_words=False)
+                if not any(isinstance(i, list) for i in answers_gen):
+                    answers_gen = [answers_gen]
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
                     gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
@@ -128,17 +134,29 @@ class TrainingViWord(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 out = results["scores"].contiguous()
-                out = F.log_softmax(out, dim=-1)
+                detached_mmt_dec_output = out['detached_mmt_results']['mmt_dec_output']
+                # out = F.log_softmax(out, dim=-1)
+                
+                out = [F.log_softmax(out[i], dim=-1) for i in range(len(out))]
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                loss.backward()
-
+                
+                for i, (head, pred) in enumerate(zip(model.mtp_heads, out)):
+                    shifted_right_answer_tokens = shifted_right_answer_tokens[:, i:, :]
+                    answer_tokens = torch.stack([
+                                        F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                                        for i in range(shifted_right_answer_tokens.size(0))
+                                    ])
+                    
+                    loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
+                    loss_i.backward()
+                    running_loss += loss_i.item()
+                results['mmt_dec_output'].backward(detached_mmt_dec_output.grad)
+                
                 self.optim.step()
-                this_loss = loss.item()
-                running_loss += this_loss
-
+                # this_loss = loss.item()
+                # running_loss += this_loss
                 pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
