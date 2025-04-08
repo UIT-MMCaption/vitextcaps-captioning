@@ -129,8 +129,8 @@ class VIWORD_MODEL(nn.Module):
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
-        results = {"scores": fwd_results["scores"]}
-        return results
+        # results = {"scores": fwd_results["scores"]}
+        return fwd_results
 
     def _forward_txt_encoding(self, items, fwd_results):
         fwd_results["txt_inds"] = items.question_tokens
@@ -226,6 +226,14 @@ class VIWORD_MODEL(nn.Module):
             prev_inds=fwd_results["prev_inds"],
         )
         fwd_results.update(mmt_results)
+        
+        if self.training:
+            detached_mmt_results = {
+                key: value.detach().requires_grad_(True) 
+                for key, value in mmt_results.items()
+            }
+            fwd_results['detached_mmt_results'] = detached_mmt_results
+        
 
     def _forward_output(self, items, fwd_results):
         mmt_dec_output = fwd_results["mmt_dec_output"]
@@ -253,6 +261,7 @@ class VIWORD_MODEL(nn.Module):
                 for i in range(answer_tokens.size(0))
             ])
             self._forward_mmt(items, fwd_results)
+            
             self._forward_output(items, fwd_results)
         else:
             # fill prev_inds with bos_idx at index 0, and zeros elsewhere
