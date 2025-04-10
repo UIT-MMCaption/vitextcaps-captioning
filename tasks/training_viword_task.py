@@ -81,18 +81,20 @@ class TrainingViWord(OpenEndedTask):
                         results = self.model(items)
 
                     out = results["scores"].contiguous()
-                    out = F.log_softmax(out, dim=-1)
+                    out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
 
                     shifted_right_answer_tokens = items.shifted_right_answer_tokens
-                    shifted_right_answer_tokens = torch.stack([
-                                        F.pad(items.shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - items.shifted_right_answer_tokens.shape[1]))
-                                        for i in range(items.shifted_right_answer_tokens.size(0))
-                                    ])
-                    
-                    loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                    this_loss = loss.item()
-                    running_loss += this_loss
 
+                    for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
+                        shifted_right_answer_tokens = shifted_right_answer_tokens[:, i:, :]
+                        answer_tokens = torch.stack([
+                                            F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                                            for i in range(shifted_right_answer_tokens.size(0))
+                                        ])
+                        
+                        loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
+                        running_loss += loss_i.item()
+                    
                     pbar.set_postfix(loss=running_loss / (it + 1))
                     pbar.update()
 
@@ -133,16 +135,15 @@ class TrainingViWord(OpenEndedTask):
             for it, items in enumerate(self.train_dataloader):
                 items = items.to(self.device)
                 results = self.model(items)
-                out = results["scores"].contiguous()
-                detached_mmt_dec_output = out['detached_mmt_results']['mmt_dec_output']
-                # out = F.log_softmax(out, dim=-1)
+                out = results["scores"]
                 
-                out = [F.log_softmax(out[i], dim=-1) for i in range(len(out))]
+                out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                
-                for i, (head, pred) in enumerate(zip(model.mtp_heads, out)):
+                total_loss  = 0.0
+                loss_tensor = torch.tensor(0.0, device=self.device) 
+                for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
                     shifted_right_answer_tokens = shifted_right_answer_tokens[:, i:, :]
                     answer_tokens = torch.stack([
                                         F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
@@ -150,13 +151,15 @@ class TrainingViWord(OpenEndedTask):
                                     ])
                     
                     loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
-                    loss_i.backward()
-                    running_loss += loss_i.item()
-                results['mmt_dec_output'].backward(detached_mmt_dec_output.grad)
-                
+                    if i == 0:
+                        delta = 1
+                    else:
+                        delta = 0.1
+                    loss_tensor += delta * loss_i
+                    total_loss += delta * loss_i.item()
+                loss_tensor.backward()
                 self.optim.step()
-                # this_loss = loss.item()
-                # running_loss += this_loss
+                running_loss += total_loss
                 pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
