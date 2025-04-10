@@ -227,12 +227,6 @@ class VIWORD_MODEL(nn.Module):
         )
         fwd_results.update(mmt_results)
         
-        if self.training:
-            detached_mmt_results = {
-                key: value.detach().requires_grad_(True) 
-                for key, value in mmt_results.items()
-            }
-            fwd_results['detached_mmt_results'] = detached_mmt_results
         
 
     def _forward_output(self, items, fwd_results):
@@ -394,7 +388,6 @@ class MMT(BertPreTrainedModel):
             "mmt_txt_output": mmt_txt_output,
             "mmt_ocr_output": mmt_ocr_output,
             "mmt_dec_output": mmt_dec_output,
-            'mmt_obj_output': mmt_obj_output
         }
         return results
 
