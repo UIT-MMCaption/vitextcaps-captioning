@@ -46,6 +46,7 @@ class TrainingViWord(OpenEndedTask):
         # self.loss_fn = BCEWithMaskLogitsLoss(ignore_index=self.vocab.padding_idx)
         # self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
         self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+        self.delta = config.AUX_LOSS_COEF
 
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
@@ -153,7 +154,7 @@ class TrainingViWord(OpenEndedTask):
                     if i == 0:
                         delta = 1
                     else:
-                        delta = 0.1
+                        delta = self.delta
                     loss_tensor += delta * loss_i
                     total_loss += delta * loss_i.item()
                 loss_tensor.backward()
@@ -233,11 +234,8 @@ class TrainingViWord(OpenEndedTask):
                 outs = result["scores"].argmax(dim=-1)
 
                 answers_gt = items.answers
-                
                 answers_gen = self.vocab.decode_batch_caption(outs.contiguous(),
-                                                            join_words=False)
-                if not any(isinstance(i, list) for i in answers_gen):
-                    answers_gen = [answers_gen]
+                                                              join_words=False)
                 gts = {}
                 gens = {}
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
