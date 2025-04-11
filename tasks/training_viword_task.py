@@ -81,19 +81,18 @@ class TrainingViWord(OpenEndedTask):
                         results = self.model(items)
 
                     out = results["scores"].contiguous()
-                    out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
+                    out = F.log_softmax(out, dim=-1)
 
                     shifted_right_answer_tokens = items.shifted_right_answer_tokens
 
-                    for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
-                        shifted_right_answer_tokens = shifted_right_answer_tokens[:, i:, :]
-                        answer_tokens = torch.stack([
-                                            F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
-                                            for i in range(shifted_right_answer_tokens.size(0))
-                                        ])
+                    answer_tokens = torch.stack([
+                                        F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                                        for i in range(shifted_right_answer_tokens.size(0))
+                                    ])
+                    
+                    loss_i = self.loss_fn(out.view(-1, out.shape[-1]), answer_tokens.type(torch.long).view(-1))
+                    running_loss += loss_i.item()
                         
-                        loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
-                        running_loss += loss_i.item()
                     
                     pbar.set_postfix(loss=running_loss / (it + 1))
                     pbar.update()
@@ -114,8 +113,8 @@ class TrainingViWord(OpenEndedTask):
                 outs = results["scores"].argmax(dim=-1)
 
                 answers_gt = items.answers
-                answers_gen = self.vocab.decode_caption(outs.contiguous(),
-                                                       join_words=False)
+                answers_gen = self.vocab.decode_batch_caption(outs.contiguous(),
+                                                                join_words=False)
                 if not any(isinstance(i, list) for i in answers_gen):
                     answers_gen = [answers_gen]
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
@@ -222,7 +221,7 @@ class TrainingViWord(OpenEndedTask):
 
         self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
 
-        self.model.train()
+        self.model.eval()
         results = []
         overall_gens = {}
         overall_gts = {}
@@ -234,13 +233,13 @@ class TrainingViWord(OpenEndedTask):
                 outs = result["scores"].argmax(dim=-1)
 
                 answers_gt = items.answers
-                answers_gen, in_fixed_vocab = self.vocab.decode_answer_with_determination(outs.contiguous().view(-1, self.vocab.max_answer_length),
-                                                        items.ocr_tokens, join_words=False)
+                answers_gen = self.vocab.decode_caption(outs.contiguous().view(-1, self.vocab.max_answer_length),
+                                                        join_words=False)
                 gts = {}
                 gens = {}
                 for i, (gts_i, gen_i, in_fixed_vocab_i) in enumerate(zip(answers_gt, answers_gen, in_fixed_vocab)):
                     gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
-                    gens['%d_%d' % (it, i)] = (gen_i, in_fixed_vocab_i)
+                    gens['%d_%d' % (it, i)] = (gen_i)
                     gts['%d_%d' % (it, i)] = gts_i
                     overall_gens['%d_%d' % (it, i)] = [gen_i, ]
                     overall_gts['%d_%d' % (it, i)] = gts_i
