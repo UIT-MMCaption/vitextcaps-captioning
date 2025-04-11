@@ -233,11 +233,14 @@ class TrainingViWord(OpenEndedTask):
                 outs = result["scores"].argmax(dim=-1)
 
                 answers_gt = items.answers
-                answers_gen = self.vocab.decode_caption(outs.contiguous().view(-1, self.vocab.max_answer_length),
-                                                        join_words=False)
+                
+                answers_gen = self.vocab.decode_batch_caption(outs.contiguous(),
+                                                            join_words=False)
+                if not any(isinstance(i, list) for i in answers_gen):
+                    answers_gen = [answers_gen]
                 gts = {}
                 gens = {}
-                for i, (gts_i, gen_i, in_fixed_vocab_i) in enumerate(zip(answers_gt, answers_gen, in_fixed_vocab)):
+                for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
                     gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
                     gens['%d_%d' % (it, i)] = (gen_i)
                     gts['%d_%d' % (it, i)] = gts_i
