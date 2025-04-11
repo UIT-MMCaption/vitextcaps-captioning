@@ -33,6 +33,7 @@ class VIWORD_MODEL(nn.Module):
         self.device = config.DEVICE
         self.max_iter = vocab.max_answer_length
         self.max_iter = 410
+        self.mode = 'training'
         print('vocab.max_answer_length', vocab.max_answer_length)
 
         self.build()
@@ -126,6 +127,8 @@ class VIWORD_MODEL(nn.Module):
         self._forward_txt_encoding(items, fwd_results)
         self._forward_obj_encoding(items, fwd_results)
         self._forward_ocr_encoding(items, fwd_results)
+        if not self.training:
+            self.mode = 'eval'
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
@@ -232,7 +235,7 @@ class VIWORD_MODEL(nn.Module):
     def _forward_output(self, items, fwd_results):
         mmt_dec_output = fwd_results["mmt_dec_output"]
         preds = []
-        if self.training:
+        if self.mode == "training":
             for cls in self.mtp_heads:
                 temp = []
                 for linear in cls:
@@ -248,7 +251,7 @@ class VIWORD_MODEL(nn.Module):
         fwd_results["scores"] = preds
 
     def _forward_mmt_and_output(self, items, fwd_results):
-        if self.training:
+        if self.mode=='training':
             answer_tokens = items.answer_tokens.clone()
             fwd_results["prev_inds"] = torch.stack([
                 F.pad(answer_tokens[i], (0, 0, 0, self.max_iter - answer_tokens.shape[1])) 
@@ -258,6 +261,7 @@ class VIWORD_MODEL(nn.Module):
             
             self._forward_output(items, fwd_results)
         else:
+            self.training = True
             # fill prev_inds with bos_idx at index 0, and zeros elsewhere
             fwd_results["prev_inds"] = torch.zeros((items.batch_size, self.max_iter, 4)).long().to(self.device)
             fwd_results['prev_inds'][:, 0, 0]  = self.vocab.bos_idx
