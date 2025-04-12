@@ -144,10 +144,10 @@ class TrainingViWord(OpenEndedTask):
                 total_loss  = 0.0
                 loss_tensor = torch.tensor(0.0, device=self.device) 
                 for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
-                    shifted_right_answer_tokens = shifted_right_answer_tokens[:, i:, :]
+                    shifted_right_answer_tokens_i = shifted_right_answer_tokens[:, i:, :]
                     answer_tokens = torch.stack([
-                                        F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
-                                        for i in range(shifted_right_answer_tokens.size(0))
+                                        F.pad(shifted_right_answer_tokens_i[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens_i.shape[1]))
+                                        for i in range(shifted_right_answer_tokens_i.size(0))
                                     ])
                     
                     loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
