@@ -46,7 +46,7 @@ class TrainingViWord(OpenEndedTask):
         # self.loss_fn = BCEWithMaskLogitsLoss(ignore_index=self.vocab.padding_idx)
         # self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
         self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
-        self.delta = config.AUX_LOSS_COEF
+        self.delta = config.TRAINING.AUX_LOSS_COEF
 
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
