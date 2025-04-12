@@ -234,22 +234,26 @@ class VIWORD_MODEL(nn.Module):
 
     def _forward_output(self, items, fwd_results):
         mmt_dec_output = fwd_results["mmt_dec_output"]
-        preds = []
+        batch_size = mmt_dec_output.size(0)
+        
         if self.mode == "training":
-            for cls in self.mtp_heads:
-                temp = []
-                for linear in cls:
-                    temp.append(linear(mmt_dec_output))
-                preds.append(torch.stack(temp, dim=2))
-            del temp
-
+            # Shape: [n_future_tokens, batch_size, seq_len, 4, vocab_size]
+            preds = torch.stack([
+                torch.stack([
+                    linear(mmt_dec_output) 
+                    for linear in classifier_head
+                ], dim=2) 
+                for classifier_head in self.mtp_heads
+            ], dim=0)
         else:
-            for linear in self.mtp_heads[0]:
-                preds.append(linear(mmt_dec_output))
-            preds = torch.stack(preds, dim=2)
-
+            # Shape: [batch_size, seq_len, 4, vocab_size]
+            preds = torch.stack([
+                linear(mmt_dec_output) 
+                for linear in self.mtp_heads[0]
+            ], dim=2)
+        
         fwd_results["scores"] = preds
-
+    
     def _forward_mmt_and_output(self, items, fwd_results):
         if self.mode=='training':
             answer_tokens = items.answer_tokens.clone()
