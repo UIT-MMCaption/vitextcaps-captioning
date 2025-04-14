@@ -129,6 +129,8 @@ class VIWORD_MODEL(nn.Module):
         self._forward_ocr_encoding(items, fwd_results)
         if not self.training:
             self.mode = 'eval'
+        else:
+            self.mode = 'training'
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
