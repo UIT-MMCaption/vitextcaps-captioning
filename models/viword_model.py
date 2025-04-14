@@ -122,15 +122,17 @@ class VIWORD_MODEL(nn.Module):
 
     def forward(self, items):
         # fwd_results holds intermediate forward pass results
+        if not self.training:
+            self.mode = 'eval'
+            self.training = True
+        else:
+            self.mode = 'training'
         # TODO possibly replace it with another sample list
         fwd_results = {}
         self._forward_txt_encoding(items, fwd_results)
         self._forward_obj_encoding(items, fwd_results)
         self._forward_ocr_encoding(items, fwd_results)
-        if not self.training:
-            self.mode = 'eval'
-        else:
-            self.mode = 'training'
+        
         self._forward_mmt_and_output(items, fwd_results)
 
         # only keep scores in the forward pass results
