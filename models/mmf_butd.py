@@ -94,9 +94,12 @@ class MMF_BUTD(nn.Module):
             mean_feat = v.mean(dim=1)   # (active, 2048)
             mean_feat_proj = self.vis_proj(mean_feat) # (active, 1000)
             current_word_emb = embeddings[active_indices, t, :] # (active, 500)
+            h2 = h2.to(active_indices.device)
             h2_active = h2[active_indices]
             attn_lstm_input = torch.cat([h2_active, mean_feat_proj, current_word_emb], dim=1) # [(500), (1000), (500)]
+            h1 = h1.to(active_indices.device)
             h1_active = h1[active_indices]
+            c1 = c1.to(active_indices.device)
             c1_active = c1[active_indices]
             h1_t, c1_t = self.att_lstm(attn_lstm_input, (h1_active, c1_active))
 
@@ -108,6 +111,7 @@ class MMF_BUTD(nn.Module):
             v_hat = torch.bmm(alpha.unsqueeze(1), v).squeeze(1)
 
             h2_active_old = h2[active_indices]
+            c2 = c2.to(active_indices.device)
             c2_active_old = c2[active_indices]
             predictions, h2_new, c2_new = self.language_decoder(
                 v_hat,
@@ -121,7 +125,8 @@ class MMF_BUTD(nn.Module):
             c1[active_indices] = c1_t
             h2[active_indices] = h2_new
             c2[active_indices] = c2_new
-
+            
+            scores = scores.to(predictions.device)
             scores[active_indices, t, :] = predictions
 
 
