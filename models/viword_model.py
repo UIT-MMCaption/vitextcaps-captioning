@@ -265,6 +265,7 @@ class VIWORD_MODEL(nn.Module):
             
             self._forward_output(items, fwd_results)
         else:
+            active_mask = torch.ones(items.batch_size, dtype=torch.bool).to(self.device)
             self.training = True
             # fill prev_inds with bos_idx at index 0, and zeros elsewhere
             fwd_results["prev_inds"] = torch.zeros((items.batch_size, self.max_iter, 4)).long().to(self.device)
@@ -273,6 +274,8 @@ class VIWORD_MODEL(nn.Module):
             # greedy decoding at test time
             last_ids = torch.zeros((items.batch_size, 4)).to(self.device)
             for ith in range(self.max_iter):
+                if not active_mask.any():
+                    break  # All sequences finished
                 self._forward_mmt(items, fwd_results)
                 self._forward_output(items, fwd_results)
 
@@ -284,8 +287,10 @@ class VIWORD_MODEL(nn.Module):
 
                 # whether or not to interrupt the decoding process
                 last_ids = torch.where(last_ids.float() == self.vocab.eos_idx, last_ids.float(), argmax_inds[:, ith].float())
-                if last_ids.mean() == self.vocab.eos_idx:
-                    break
+                newly_finished = (last_ids[:, 0] == self.vocab.eos_idx)
+                # print(newly_finished.shape)
+                # print(active_mask.shape)
+                active_mask[active_mask.clone()] = ~newly_finished[active_mask]
 
 class TextBert(BertPreTrainedModel):
     def __init__(self, config):
