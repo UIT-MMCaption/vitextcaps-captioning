@@ -1,3 +1,9 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.utils.weight_norm import weight_norm
+from builders.model_builder import META_ARCHITECTURE
+
 class LanguageDecoder(nn.Module): # Languague LSTM: v_hat (diminish dim) + hidden state -> next word 
     def __init__(self, in_dim, out_dim, hidden_dim, dropout, fc_bias_init, vis_feat_dim):
         super().__init__()
@@ -17,7 +23,8 @@ class LanguageDecoder(nn.Module): # Languague LSTM: v_hat (diminish dim) + hidde
         h2, c2 = self.language_lstm(x, (h2, c2))
         predictions = self.fc(self.dropout(h2))
         return predictions, h2, c2
-
+        
+@META_ARCHITECTURE.register()
 class MMF_BUTD(nn.Module):
     def __init__(self, config, vocab):
         super().__init__()
