@@ -1,4 +1,4 @@
-TASK: TrainingMMF
+TASK: TrainingBUTDMMF
 
 DATASET:
   FEATURE_DATASET:
