@@ -38,7 +38,23 @@ class BaseTask:
         self.create_dataloaders(config)
 
         logger.info("Building model")
-        self.model = build_model(config.MODEL, self.vocab)
+        # self.model = build_model(config.MODEL, self.vocab)
+        from models.mmf_m2 import TransformerM2, MemoryAugmentedEncoder, MeshedDecoder
+        if config.MODEL.get("ARCHITECTURE", "") == "TransformerM2":
+            # Tự định nghĩa model
+            encoder = MemoryAugmentedEncoder(N=3, padding_idx=0, d_in=2048).to(config.MODEL.DEVICE)
+            max_len = 512
+            decoder = MeshedDecoder(
+                vocab_size=len(self.vocab),
+                max_len=max_len,
+                N_dec=3,
+                padding_idx=0
+            ).to(config.MODEL.DEVICE)
+            model = TransformerM2(bos_idx=1, encoder=encoder, decoder=decoder).to(config.MODEL.DEVICE)
+            self.model = model
+        else:
+            # Model mặc định
+            self.model = build_model(config.MODEL, self.vocab)
         self.config = config
         self.device = torch.device(config.MODEL.DEVICE)
 
