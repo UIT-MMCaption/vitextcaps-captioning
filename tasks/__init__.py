@@ -11,3 +11,4 @@ from .training_vit5_task import TrainingViT5
 from .training_aoa_task import TrainingAoA
 from .training_viword_task import TrainingViWord
 from .training_butd_task import TrainingBUTDMMF
+from .training_m2_task import TrainingM2MMF
