@@ -17,12 +17,17 @@ from transformers import AutoTokenizer, AutoModel
 from contextlib import contextmanager
 import json
 from typing import Union, Sequence, Tuple
+from builders.model_builder import META_ARCHITECTURE
+import copy
+
+
+TensorOrSequence = Union[Sequence[torch.Tensor], torch.Tensor]
+TensorOrNone = Union[torch.Tensor, None]
 
 class OCREncoder(nn.Module):
   def __init__(self, ocr_in_dim, hidden_size, dropout_prob=0.1):
     super().__init__()
 
-    # 300 (FastText) + 256 (rec_features) + 256 (det_features) = 812 # 768
     self.linear_ocr_feat_to_mmt_in = nn.Linear(ocr_in_dim, hidden_size)
 
     # OCR location feature
@@ -34,24 +39,16 @@ class OCREncoder(nn.Module):
 
   def forward(self, ocr_boxes, ocr_token_embeddings, ocr_rec_features, ocr_det_features):
 
-    # Normalize input
     ocr_token_embeddings = F.normalize(ocr_token_embeddings, dim=-1)
     ocr_rec_features = F.normalize(ocr_rec_features, dim=-1)
     ocr_det_features = F.normalize(ocr_det_features, dim=-1)
 
-    # get OCR combine features
     ocr_combine_features = torch.cat([ocr_token_embeddings, ocr_rec_features, ocr_det_features], dim=-1)
     ocr_combine_features = self.ocr_feat_layer_norm(self.linear_ocr_feat_to_mmt_in(ocr_combine_features))
 
-    # Get OCR bbox features
     ocr_bbox_features = self.ocr_bbox_layer_norm(self.linear_ocr_bbox_to_mmt_in(ocr_boxes))
 
     return self.dropout(ocr_combine_features + ocr_bbox_features) # batch_size, seq_length, hidden_size
-
-"""## **Module**"""
-
-TensorOrSequence = Union[Sequence[torch.Tensor], torch.Tensor]
-TensorOrNone = Union[torch.Tensor, None]
 
 def get_batch_size(x: TensorOrSequence) -> int:
     if isinstance(x, torch.Tensor):
@@ -652,6 +649,7 @@ class MeshedDecoder(Module):
                  self_att_module=None, enc_att_module=None, self_att_module_kwargs=None, enc_att_module_kwargs=None):
         super(MeshedDecoder, self).__init__()
         self.d_model = d_model
+        print("🟢 vocab size:", self.word_emb.num_embeddings)
         self.word_emb = nn.Embedding(vocab_size, d_model, padding_idx=padding_idx)
         self.pos_emb = nn.Embedding.from_pretrained(sinusoid_encoding_table(max_len + 1, d_model, 1), freeze=True)
         self.layers = ModuleList(
@@ -760,12 +758,11 @@ class CaptioningModel(Module):
 
 """## **Transformer**"""
 
-from torch import nn
-import copy
 
-class Transformer(CaptioningModel):
+@META_ARCHITECTURE.register()
+class TransformerM2(CaptioningModel):
     def __init__(self, bos_idx, encoder, decoder):
-        super(Transformer, self).__init__()
+        super(TransformerM2, self).__init__()
         self.bos_idx = bos_idx
         self.encoder = encoder
         self.decoder = decoder
@@ -810,7 +807,7 @@ class Transformer(CaptioningModel):
         return self.decoder(it, self.enc_output, self.mask_enc)
 
 class TransformerEnsemble(CaptioningModel):
-    def __init__(self, model: Transformer, weight_files):
+    def __init__(self, model: TransformerM2, weight_files):
         super(TransformerEnsemble, self).__init__()
         self.n = len(weight_files)
         self.models = ModuleList([copy.deepcopy(model) for _ in range(self.n)])
