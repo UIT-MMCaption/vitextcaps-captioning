@@ -121,18 +121,8 @@ class TrainingM2MMF(OpenEndedTask):
         return scores
 
     def train(self):
-        from models.mmf_m2 import TransformerM2, MemoryAugmentedEncoder, MeshedDecoder
         self.model.train()
         running_loss = .0
-        encoder = MemoryAugmentedEncoder(N=3, padding_idx=0, d_in=2048)
-        max_len=512
-        decoder = MeshedDecoder(
-            vocab_size=len(self.vocab),
-            max_len=max_len,
-            N_dec=3,
-            padding_idx=0
-        )
-        model = TransformerM2(bos_idx=1, encoder=encoder, decoder=decoder)
         with tqdm(desc='Epoch %d - Training with cross-entropy loss' % self.epoch, unit='it', total=len(self.train_dataloader)) as pbar:
             for it, items in enumerate(self.train_dataloader):
                 items = items.to(self.device)
@@ -142,10 +132,10 @@ class TrainingM2MMF(OpenEndedTask):
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                shifted_target = shifted_right_answer_tokens.clone()  # Tạo bản sao
+                loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
+                # shifted_target = shifted_right_answer_tokens.clone()  # Tạo bản sao
 
-                loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_target.view(-1))
+                # # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_target.view(-1))
                 loss.backward()
 
                 self.optim.step()
