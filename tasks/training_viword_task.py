@@ -163,6 +163,19 @@ class TrainingViWord(OpenEndedTask):
                 pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
+    
+    def alt_start(self, epochs=10):
+        for i in range(self.epoch, epochs):
+            self.train()
+            self.epoch+=1
+        
+        scores = self.evaluate_metrics(self.dev_dict_dataloader)
+        logger.info("Validation scores %s", scores)
+        val_score = scores[self.score]
+
+        self.save_checkpoint({
+                'val_score': val_score,
+            })
 
     def start(self):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
