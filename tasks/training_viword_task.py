@@ -165,17 +165,26 @@ class TrainingViWord(OpenEndedTask):
                 self.scheduler.step()
     
     def alt_start(self, epochs=10):
-        for i in range(self.epoch, epochs):
-            self.train()
-            self.epoch+=1
-        
-        scores = self.evaluate_metrics(self.dev_dict_dataloader)
-        logger.info("Validation scores %s", scores)
-        val_score = scores[self.score]
+        if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
+            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
+            best_val_score = checkpoint["best_val_score"]
+            patience = checkpoint["patience"]
+            self.epoch = checkpoint["epoch"] + 1
+            self.optim.load_state_dict(checkpoint['optimizer'])
+            self.scheduler.load_state_dict(checkpoint['scheduler'])
+        else:
+            for i in range(self.epoch, epochs):
+                self.train()
+                self.epoch+=1
+            
+            # scores = self.evaluate_metrics(self.dev_dict_dataloader)
+            # logger.info("Validation scores %s", scores)
+            # val_score = scores[self.score]
 
-        self.save_checkpoint({
-                'val_score': val_score,
-            })
+            self.save_checkpoint({
+                    'best_val_score': 0,
+                    'patience': 0
+                })
 
     def start(self):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
