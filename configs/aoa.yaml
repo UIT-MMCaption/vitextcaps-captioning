@@ -38,7 +38,7 @@ DATASET:
             PADDING_INDEX: 0
     MIN_FREQ: 1
     VOCAB:
-        TYPE: OcrVocab
+        TYPE: M2Vocab
         TOKENIZER: null
         WORD_EMBEDDING: null
         WORD_EMBEDDING_CACHE: null
