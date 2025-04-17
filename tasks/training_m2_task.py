@@ -128,14 +128,11 @@ class TrainingM2MMF(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 out = results["scores"].contiguous()
-                # out = F.log_softmax(out, dim=-1)
+                out = F.log_softmax(out, dim=-1)
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
                 loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                # shifted_target = shifted_right_answer_tokens.clone()  # Tạo bản sao
-
-                # # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_target.view(-1))
                 loss.backward()
 
                 self.optim.step()
