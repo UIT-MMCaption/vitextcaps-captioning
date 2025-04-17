@@ -649,7 +649,6 @@ class MeshedDecoder(Module):
                  self_att_module=None, enc_att_module=None, self_att_module_kwargs=None, enc_att_module_kwargs=None):
         super(MeshedDecoder, self).__init__()
         self.d_model = d_model
-        print("🟢 vocab size:", self.word_emb.num_embeddings)
         self.word_emb = nn.Embedding(vocab_size, d_model, padding_idx=padding_idx)
         self.pos_emb = nn.Embedding.from_pretrained(sinusoid_encoding_table(max_len + 1, d_model, 1), freeze=True)
         self.layers = ModuleList(
@@ -688,7 +687,8 @@ class MeshedDecoder(Module):
             out = l(out, encoder_output, mask_queries, mask_self_attention, mask_encoder)
 
         out = self.fc(out)
-        return F.log_softmax(out, dim=-1)
+        # return F.log_softmax(out, dim=-1)
+        return out
 
 """## **Captioning Model**"""
 
