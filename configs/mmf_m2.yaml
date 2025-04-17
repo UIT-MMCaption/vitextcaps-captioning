@@ -6,7 +6,7 @@ DATASET:
     BATCH_SIZE: 64
     WORKERS: 0
     FEATURE_PATH:
-      FEATURES: /content/vinvl_vinvl/vinvl_vinvl
+      FEATURES: /content/vinvl_vinvl
       SCENE_TEXT: /content/swintextspotter
       FASTTEXT: /content/fasttext
       EDGE: null
@@ -31,7 +31,7 @@ DATASET:
     WORD_EMBEDDING_CACHE: null
   MIN_FREQ: 1
   VOCAB:
-    TYPE: OcrVocab
+    TYPE: M2Vocab
     TOKENIZER: null
     WORD_EMBEDDING: null
     WORD_EMBEDDING_CACHE: null
