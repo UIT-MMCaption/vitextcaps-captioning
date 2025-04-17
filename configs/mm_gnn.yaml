@@ -3,7 +3,7 @@ TASK: TrainingMMF
 DATASET:
   FEATURE_DATASET:
     TYPE: OcrFeatureDataset
-    BATCH_SIZE: 16
+    BATCH_SIZE: 32
     WORKERS: 0
     FEATURE_PATH:
       FEATURES: data/features/vinvl_vinvl
@@ -17,7 +17,7 @@ DATASET:
     WORD_EMBEDDING_CACHE: null
   DICT_DATASET:
     TYPE: OcrDictionaryDataset
-    BATCH_SIZE: 16
+    BATCH_SIZE: 32
     WORKERS: 1
     FEATURE_PATH:
       FEATURES: data/features/vinvl_vinvl
@@ -60,7 +60,7 @@ TRAINING:
   CHECKPOINT_PATH: /content/drive/MyDrive/ViTextCaps/checkpoints
   LEARNING_RATE: 0.00005
   RL_LEARNING_RATE: 0.000005
-  WARMUP: 6000
+  WARMUP: 2500
   SCORE: CIDEr
   TRAINING_BEAM_SIZE: 1
   EVALUATING_BEAM_SIZE: 1
