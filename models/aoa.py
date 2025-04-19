@@ -35,7 +35,7 @@ class AoA_Model(nn.Module):
         if self.training:
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  sample['answer_tokens'].type(torch.long).squeeze(), 
-                                                 sample['answer_masks'].type(torch.long).squeeze())
+                                                 (sample['answer_tokens'] != 0).long().squeeze())
         else:
             input_ids = torch.zeros_like(sample['answer_tokens'].squeeze(), dtype=torch.long)
             if len(input_ids.size()) < 2:
@@ -43,7 +43,7 @@ class AoA_Model(nn.Module):
             input_ids[:, 0] = 1
             decoded_outputs = self.decoder_layer(refined_features, 
                                                  input_ids, 
-                                                 sample['answer_masks'].type(torch.long).squeeze())
+                                                 (sample['answer_tokens'] != 0).long().squeeze())
         
         out['scores'] = decoded_outputs 
         return out

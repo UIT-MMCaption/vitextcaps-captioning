@@ -24,26 +24,21 @@ logger = setup_logger()
 
 
 class LanguageModelCriterion(nn.Module):
-
     def __init__(self):
         super(LanguageModelCriterion, self).__init__()
-        self.loss_fn = nn.NLLLoss(reduce='none')
+        self.loss_fn = nn.NLLLoss(ignore_index=0, reduction='mean') # Directly ignore index 0 and average
+        # Note: We use 'mean' reduction here, so we don't need to divide by mask sum later
 
     def forward(self, logits, target):
         """
         logits: shape of (N, seq_len, vocab_size)
         target: shape of (N, seq_len)
-        mask: shape of (N, seq_len)
         """
         # truncate to the same size
         target = target[:, :logits.shape[1]]
-        mask = (target != 0).float()
         logits = logits.contiguous().view(-1, logits.shape[2])
         target = target.contiguous().view(-1)
-        mask = mask.contiguous().view(-1)
-        loss = self.loss_fn(logits, target)
-        masked_loss = loss * mask
-        output = masked_loss.sum() / mask.sum()  # Average over actual tokens
+        output = self.loss_fn(logits, target)
         return output
 
 class ContrastiveLoss(nn.Module):

@@ -65,7 +65,7 @@ DATASET:
         TEST: data/features/vitextcaps_test.json
 TRAINING:
     CHECKPOINT_PATH: saved_models
-    LEARNING_RATE: 0.00005
+    LEARNING_RATE: 0.0004
     LR_UPDATE: 15
     GRAD_CLIP: 1.
     RL_LEARNING_RATE: 0.000005
