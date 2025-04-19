@@ -233,7 +233,7 @@ class VIWORD_MODEL(nn.Module):
         mmt_dec_output = fwd_results["mmt_dec_output"]
         batch_size = mmt_dec_output.size(0)
         
-        if self.mode == "training":
+        if self.training:
             # Shape: [n_future_tokens, batch_size, seq_len, 4, vocab_size]
             preds = torch.stack([
                 torch.stack([
