@@ -29,7 +29,7 @@ class LanguageModelCriterion(nn.Module):
         super(LanguageModelCriterion, self).__init__()
         self.loss_fn = nn.NLLLoss(reduce='none')
 
-    def forward(self, logits, target, mask):
+    def forward(self, logits, target):
         """
         logits: shape of (N, seq_len, vocab_size)
         target: shape of (N, seq_len)
@@ -37,7 +37,7 @@ class LanguageModelCriterion(nn.Module):
         """
         # truncate to the same size
         target = target[:, :logits.shape[1]]
-        mask = mask[:, :logits.shape[1]]
+        mask = (target != 0).float()
         logits = logits.contiguous().view(-1, logits.shape[2])
         target = target.contiguous().view(-1)
         mask = mask.contiguous().view(-1)
@@ -155,23 +155,12 @@ class TrainingStacMR(OpenEndedTask):
                         results = self.model(items)
 
                     seq_prob = results['scores'].contiguous()
-                    # img_emb = results['img_emb']
-                    # cap_emb = results['cap_emb']
-                    # out = F.log_softmax(out, dim=-1)
                     
-                    shifted_right_answer_tokens = items.answer_tokens.squeeze()
-                    # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
+                    shifted_right_answer_tokens = items.shifted_right_answer_tokens.squeeze()
                     
-                    answer_masks = items.answer_masks.squeeze()
-                    
-                    caption_loss = self.crit(seq_prob,
-                                             shifted_right_answer_tokens, 
-                                             answer_masks)
-                
-                    # retrieval_loss = self.criterion(img_emb, cap_emb)
-                    
-                    # loss = 2.0 * retrieval_loss + caption_loss
-                    loss = caption_loss # Focus on text generation
+                    loss = self.crit(seq_prob,
+                                     shifted_right_answer_tokens, 
+                                    )
                     
                     this_loss = loss.item()
                     running_loss += this_loss
@@ -217,29 +206,17 @@ class TrainingStacMR(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 seq_probs = results["scores"].contiguous()
-                # img_emb = results['img_emb']
-                # cap_emb = results['cap_emb']
-                #out = F.log_softmax(out, dim=-1)
-
-                shifted_right_answer_tokens = items.answer_tokens.squeeze()
-                # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
+                
+                shifted_right_answer_tokens = items.shifted_right_answer_tokens.squeeze()
                     
-                answer_masks = items.answer_masks.squeeze()
+                
                 self.optim.zero_grad()
 
-                caption_loss = self.crit(seq_probs,
-                                         shifted_right_answer_tokens,
-                                         answer_masks)
-                
-                # retrieval_loss = self.criterion(img_emb, cap_emb)
-                
-                # loss = 2.0 * retrieval_loss + caption_loss
-                loss = caption_loss
+                loss = self.crit(seq_probs,
+                                 shifted_right_answer_tokens,
+                                )
                 
                 loss.backward()
-
-                if self.grad_clip > 0:
-                    clip_grad_norm_(self.model.parameters(), self.grad_clip)
                     
                 self.optim.step()
                 this_loss = loss.item()
