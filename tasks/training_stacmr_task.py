@@ -105,14 +105,10 @@ class TrainingStacMR(OpenEndedTask):
     def __init__(self, config):
         super().__init__(config)
         self.config = config
-        self.tokenizer = get_tokenizer(config.DATASET.FEATURE_DATASET.TOKENIZER.PRETRAINED_NAME)
         self.crit = LanguageModelCriterion()
-        self.criterion = ContrastiveLoss(margin=config.MODEL.LOSS_FN.MARGIN,
-                                         measure=config.MODEL.LOSS_FN.MEASURE,
-                                         max_violation=config.MODEL.LOSS_FN.MAX_VIOLATION)
 
         self.crit.to(self.device)
-        self.criterion.to(self.device)
+
         self.grad_clip = config.TRAINING.GRAD_CLIP
         #self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
       
@@ -179,11 +175,11 @@ class TrainingStacMR(OpenEndedTask):
                 outs = results["predicted_token"]
 
                 answers_gt = items.answers
-                answers_gen = self.tokenizer.batch_decode(outs,
-                                                          skip_special_tokens=True)
+                answers_gen = self.vocab.decode_answer(outs.contiguous(),
+                                                       items.ocr_tokens,
+                                                       join_words=False)
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
-                    words = gen_i.split()
-                    gen_i = ' '.join([k for k, g in itertools.groupby(words)])
+                    gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
                     gts['%d_%d' % (it, i)] = gts_i
                 pbar.update()
@@ -296,7 +292,6 @@ class TrainingStacMR(OpenEndedTask):
                 gts = {}
                 gens = {}
                 for i, (gts_i, gen_i) in enumerate(zip(answers_gt, answers_gen)):
-                    words = gen_i.split()
                     gen_i = ' '.join([k for k, g in itertools.groupby(words)])
                     gens['%d_%d' % (it, i)] = [gen_i, ]
                     gts['%d_%d' % (it, i)] = gts_i
