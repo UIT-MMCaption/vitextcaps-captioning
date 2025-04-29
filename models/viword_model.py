@@ -106,16 +106,10 @@ class VIWORD_MODEL(nn.Module):
 
     def _build_output(self):
         # fixed answer vocabulary scores
-        num_choices = len(self.vocab)
-        # remove the OCR copying dimensions in LoRRA's classifier output
-        # (OCR copying will be handled separately)
-        classifier_head = nn.ModuleList([
-            nn.Linear(self.mmt_config.hidden_size, len(self.vocab)) 
-            for _ in range(4)
-        ])
 
         self.mtp_heads = nn.ModuleList([
-            classifier_head for _ in range(self.config.CLASSIFIER.N_FUTURE_TOKENS)
+            OutputHead(self.vocab, self.config, self.mmt_config) 
+            for _ in range(self.config.CLASSIFIER.N_FUTURE_TOKENS)
         ])
 
 
@@ -233,21 +227,18 @@ class VIWORD_MODEL(nn.Module):
         mmt_dec_output = fwd_results["mmt_dec_output"]
         batch_size = mmt_dec_output.size(0)
         
-        if self.training:
-            # Shape: [n_future_tokens, batch_size, seq_len, 4, vocab_size]
-            preds = torch.stack([
-                torch.stack([
-                    linear(mmt_dec_output) 
-                    for linear in classifier_head
-                ], dim=2) 
-                for classifier_head in self.mtp_heads
-            ], dim=0)
+        if len(self.mtp_heads) == 1:
+            preds = self.mtp_heads[0](mmt_dec_output)
         else:
-            # Shape: [batch_size, seq_len, 4, vocab_size]
-            preds = torch.stack([
-                linear(mmt_dec_output) 
-                for linear in self.mtp_heads[0]
-            ], dim=2)
+            if self.training:
+                # Shape: [n_future_tokens, batch_size, seq_len, 4, vocab_size]
+                preds = torch.stack([
+                    classifier_head(mmt_dec_output)
+                    for classifier_head in self.mtp_heads
+                ], dim=0)
+            else:
+                # Shape: [batch_size, seq_len, 4, vocab_size]
+                preds = self.mtp_heads[0](mmt_dec_output)
         
         fwd_results["scores"] = preds
     
@@ -455,3 +446,26 @@ class PrevPredEmbeddings(nn.Module):
         embeddings = self.emb_dropout(embeddings)
         return embeddings
 
+
+class OutputHead(nn.Module):
+    def __init__(self, vocab, config, mmt_config):
+        super().__init__()
+        self.dense = nn.Linear(mmt_config.hidden_size, mmt_config.hidden_size)
+        self.activation = nn.GELU()
+        self.norm = nn.LayerNorm(mmt_config.hidden_size)
+        num_choices = len(vocab)
+
+        self.classifier_head = nn.ModuleList([
+            nn.Linear(mmt_config.hidden_size, len(vocab))
+            for _ in range(4)
+        ])
+
+    def forward(self, x):
+        x = self.dense(x)
+        x = self.activation(x)
+        x = self.norm(x)
+        preds = torch.stack([
+                linear(x)
+                for linear in self.classifier_head
+            ], dim=2)
+        return preds
