@@ -137,26 +137,36 @@ class TrainingViWord(OpenEndedTask):
                 results = self.model(items)
                 out = results["scores"]
                 
-                out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
-
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
                 total_loss  = 0.0
-                loss_tensor = torch.tensor(0.0, device=self.device) 
-                for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
-                    shifted_right_answer_tokens_i = shifted_right_answer_tokens[:, i:, :]
-                    answer_tokens = torch.stack([
-                                        F.pad(shifted_right_answer_tokens_i[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens_i.shape[1]))
-                                        for i in range(shifted_right_answer_tokens_i.size(0))
-                                    ])
+                loss_tensor = torch.tensor(0.0, device=self.device)
+                
+                # IF using multiple heads
+                if len(self.model.mtp_heads) > 1:
+                    out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
+                    for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
+                        shifted_right_answer_tokens_i = shifted_right_answer_tokens[:, i:, :] # Shift answer tokens
+                        answer_tokens = torch.stack([
+                                            F.pad(shifted_right_answer_tokens_i[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens_i.shape[1]))
+                                            for i in range(shifted_right_answer_tokens_i.size(0))
+                                        ])
+                        
+                        loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
+                        if i == 0:
+                            delta = 1
+                        else:
+                            delta = self.delta
+                        loss_tensor += delta * loss_i
+                        total_loss += delta * loss_i.item()
+                else:
+                    out = F.log_softmax(out.contiguous(), dim=-1)
                     
-                    loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
-                    if i == 0:
-                        delta = 1
-                    else:
-                        delta = self.delta
-                    loss_tensor += delta * loss_i
-                    total_loss += delta * loss_i.item()
+                    shifted_right_answer_tokens = F.pad(shifted_right_answer_tokens, (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                    loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.type(torch.long).view(-1))
+                    loss_tensor += loss
+                    total_loss += loss.item()
+                
                 loss_tensor.backward()
                 self.optim.step()
                 running_loss += total_loss

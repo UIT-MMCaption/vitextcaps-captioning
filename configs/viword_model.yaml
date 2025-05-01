@@ -3,7 +3,7 @@ TASK: TrainingViWord
 DATASET:
   FEATURE_DATASET:
     TYPE: ViWordFeatureDataset
-    BATCH_SIZE: 32
+    BATCH_SIZE: 16
     WORKERS: 0
     FEATURE_PATH:
       FEATURES: data/features/vinvl_vinvl
@@ -17,7 +17,7 @@ DATASET:
     WORD_EMBEDDING_CACHE: null
   DICT_DATASET:
     TYPE: ViWordDictionaryDataset
-    BATCH_SIZE: 32
+    BATCH_SIZE: 16
     WORKERS: 1
     FEATURE_PATH:
       FEATURES: data/features/vinvl_vinvl
@@ -49,18 +49,18 @@ DATASET:
     QUESTION_TOKEN: <question>
     ANSWER_TOKEN: <answer>
     JSON_PATH:
-      TRAIN: data/features/vitextcaps_train.json
-      DEV: data/features/vitextcaps_dev.json
-      TEST: data/features/vitextcaps_test.json
+      TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
+      DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
+      TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
   JSON_PATH:
-    TRAIN: data/features/vitextcaps_train.json
-    DEV: data/features/vitextcaps_dev.json
-    TEST: data/features/vitextcaps_test.json
+    TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
+    DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
+    TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
 TRAINING:
   CHECKPOINT_PATH: saved_model
   LEARNING_RATE: 0.00005
   RL_LEARNING_RATE: 0.000005
-  WARMUP: 2500
+  WARMUP: 6000
   SCORE: CIDEr
   TRAINING_BEAM_SIZE: 1
   EVALUATING_BEAM_SIZE: 1
@@ -70,7 +70,7 @@ TRAINING:
 MODEL:
   ARCHITECTURE: VIWORD_MODEL
   NAME: viword_vinvl_swimspotter_test_0
-  DEVICE: cuda
+  DEVICE: cpu
   D_MODEL: 768
 
   OBJECT_EMBEDDING:
@@ -94,7 +94,7 @@ MODEL:
     OCR_MAX_NUM: 30
   CLASSIFIER:
     OCR_MAX_NUM: 30
-    N_FUTURE_TOKENS: 4
+    N_FUTURE_TOKENS: 1
   MMT:
     HIDDEN_SIZE: 768
     NUM_HIDDEN_LAYERS: 4

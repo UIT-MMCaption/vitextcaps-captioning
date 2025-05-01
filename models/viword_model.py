@@ -242,6 +242,7 @@ class VIWORD_MODEL(nn.Module):
         
         fwd_results["scores"] = preds
     
+    
     def _forward_mmt_and_output(self, items, fwd_results):
         if self.training:
             answer_tokens = items.answer_tokens.clone()
@@ -278,6 +279,7 @@ class VIWORD_MODEL(nn.Module):
                 # print(newly_finished.shape)
                 # print(active_mask.shape)
                 active_mask[active_mask.clone()] = ~newly_finished[active_mask]
+
 
 class TextBert(BertPreTrainedModel):
     def __init__(self, config):
