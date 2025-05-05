@@ -174,8 +174,7 @@ class TrainingViWord(OpenEndedTask):
                 pbar.update()
                 self.scheduler.step()
     
-    
-    def start(self, epochs=10):
+    def alt_start(self, epochs=10):
         if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
             checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
             best_val_score = checkpoint["best_val_score"]
@@ -184,68 +183,68 @@ class TrainingViWord(OpenEndedTask):
             self.optim.load_state_dict(checkpoint['optimizer'])
             self.scheduler.load_state_dict(checkpoint['scheduler'])
         else:
-            while self.epoch < epochs:
-                logger.info("Training epoch %d", self.epoch)
+            for i in range(self.epoch, epochs):
                 self.train()
                 self.epoch+=1
             
             # scores = self.evaluate_metrics(self.dev_dict_dataloader)
             # logger.info("Validation scores %s", scores)
             # val_score = scores[self.score]
-                self.save_checkpoint({
-                        'best_val_score': 0,
-                        'patience': 0
-                    })
 
-    # def start(self):
-    #     if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
-    #         checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
-    #         best_val_score = checkpoint["best_val_score"]
-    #         patience = checkpoint["patience"]
-    #         self.epoch = checkpoint["epoch"] + 1
-    #         self.optim.load_state_dict(checkpoint['optimizer'])
-    #         self.scheduler.load_state_dict(checkpoint['scheduler'])
-    #     else:
-    #         best_val_score = .0
-    #         patience = 0
+            self.save_checkpoint({
+                    'best_val_score': 0,
+                    'patience': 0
+                })
 
-    #     while True:
-    #         self.train()
-    #         self.evaluate_loss(self.dev_dataloader)
+    def start(self):
+        if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
+            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
+            best_val_score = checkpoint["best_val_score"]
+            patience = checkpoint["patience"]
+            self.epoch = checkpoint["epoch"] + 1
+            self.optim.load_state_dict(checkpoint['optimizer'])
+            self.scheduler.load_state_dict(checkpoint['scheduler'])
+        else:
+            best_val_score = .0
+            patience = 0
 
-    #         # val scores
-    #         scores = self.evaluate_metrics(self.dev_dict_dataloader)
-    #         logger.info("Validation scores %s", scores)
-    #         val_score = scores[self.score]
+        while True:
+            self.train()
+            self.evaluate_loss(self.dev_dataloader)
 
-    #         # Prepare for next epoch
-    #         best = False
-    #         if val_score > best_val_score:
-    #             best_val_score = val_score
-    #             patience = 0
-    #             best = True
-    #         else:
-    #             patience += 1
+            # val scores
+            scores = self.evaluate_metrics(self.dev_dict_dataloader)
+            logger.info("Validation scores %s", scores)
+            val_score = scores[self.score]
 
-    #         exit_train = False
+            # Prepare for next epoch
+            best = False
+            if val_score > best_val_score:
+                best_val_score = val_score
+                patience = 0
+                best = True
+            else:
+                patience += 1
 
-    #         if patience == self.patience:
-    #             logger.info('patience reached.')
-    #             exit_train = True
+            exit_train = False
 
-    #         self.save_checkpoint({
-    #             'best_val_score': best_val_score,
-    #             'patience': patience
-    #         })
+            if patience == self.patience:
+                logger.info('patience reached.')
+                exit_train = True
 
-    #         if best:
-    #             copyfile(os.path.join(self.checkpoint_path, "last_model.pth"),
-    #                      os.path.join(self.checkpoint_path, "best_model.pth"))
+            self.save_checkpoint({
+                'best_val_score': best_val_score,
+                'patience': patience
+            })
 
-    #         if exit_train:
-    #             break
+            if best:
+                copyfile(os.path.join(self.checkpoint_path, "last_model.pth"),
+                         os.path.join(self.checkpoint_path, "best_model.pth"))
 
-    #         self.epoch += 1
+            if exit_train:
+                break
+
+            self.epoch += 1
 
 
     def get_predictions(self):
