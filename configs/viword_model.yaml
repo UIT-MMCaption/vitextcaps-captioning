@@ -49,13 +49,13 @@ DATASET:
     QUESTION_TOKEN: <question>
     ANSWER_TOKEN: <answer>
     JSON_PATH:
-      TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
-      DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
-      TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
+      TRAIN: data/features/vitextcaps_train.json
+      DEV: data/features/vitextcaps_dev.json
+      TEST: data/features/vitextcaps_test.json
   JSON_PATH:
-    TRAIN: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_train.json
-    DEV: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_dev.json
-    TEST: /content/drive/MyDrive/ViTextCap/Data/features/vitextcaps_test.json
+    TRAIN: data/features/vitextcaps_train.json
+    DEV: data/features/vitextcaps_dev.json
+    TEST: data/features/vitextcaps_test.json
 TRAINING:
   CHECKPOINT_PATH: saved_model
   LEARNING_RATE: 0.00005

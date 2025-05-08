@@ -31,7 +31,6 @@ class VIWORD_MODEL(nn.Module):
         self.vocab = vocab
         self.d_model = self.mmt_config.hidden_size
         self.device = config.DEVICE
-        self.max_iter = vocab.max_answer_length
         self.max_iter = 410
         print('vocab.max_answer_length', vocab.max_answer_length)
 
@@ -398,7 +397,9 @@ class WordRepresentation(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(len(vocab), hidden_size)
         self.hidden_size = hidden_size
-        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True)
+        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True, num_layers=2, dropout=0.1)
+        self.dropout_output = nn.Dropout(p=.1)
+        self.dropout_embed = nn.Dropout(p=.1)
         self._initialize_weights()
 
     def _initialize_weights(self):
@@ -410,11 +411,13 @@ class WordRepresentation(nn.Module):
 
     def forward(self, x):
         embed = self.embedding(x) # (batch_size, num_tokens, 4, hidden_size)
+        embed = self.dropout_embed(embed) # (batch_size, num_tokens, 4, hidden_size)
         batch_size, num_tokens, seq_len, feature_dim = embed.size()
         embed = embed.view(batch_size*num_tokens, seq_len, feature_dim) # (batch_size*num_tokens, 4, hidden_size)
         out, h_n = self.gru(embed)
         word_representations = h_n.squeeze(0)
-        word_representations = word_representations.view(batch_size, num_tokens, self.hidden_size)
+        word_representations = self.dropout_output(word_representations)
+        word_representations = word_representations.view(batch_size, num_tokens, self.hidden_size) # (batch_size, num_tokens, hidden_size)
 
         return word_representations
 
@@ -422,7 +425,6 @@ class PrevPredEmbeddings(nn.Module):
     def __init__(self, config, vocab):
         super().__init__()
         MAX_DEC_LENGTH = 410
-        MAX_TYPE_NUM = 5
         hidden_size = config.hidden_size
         ln_eps = config.layer_norm_eps
 
