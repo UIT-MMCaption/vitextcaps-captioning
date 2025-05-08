@@ -182,19 +182,19 @@ class TrainingViWord(OpenEndedTask):
             self.epoch = checkpoint["epoch"] + 1
             self.optim.load_state_dict(checkpoint['optimizer'])
             self.scheduler.load_state_dict(checkpoint['scheduler'])
-        else:
-            while self.epoch < epochs:
-                self.train()
-                self.epoch+=1
-            
+        
+        while self.epoch < epochs:
+            self.train()
+            self.epoch+=1
+        
             # scores = self.evaluate_metrics(self.dev_dict_dataloader)
             # logger.info("Validation scores %s", scores)
             # val_score = scores[self.score]
 
-                self.save_checkpoint({
-                        'best_val_score': 0,
-                        'patience': 0
-                    })
+            self.save_checkpoint({
+                    'best_val_score': 0,
+                    'patience': 0
+                })
 
     # def start(self):
     #     if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
