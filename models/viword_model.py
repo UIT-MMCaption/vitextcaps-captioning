@@ -397,7 +397,7 @@ class WordRepresentation(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(len(vocab), hidden_size)
         self.hidden_size = hidden_size
-        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True, num_layers=2, dropout=0.1)
+        self.gru = nn.GRU(hidden_size, hidden_size, batch_first=True, num_layers=1)
         self.dropout_output = nn.Dropout(p=.1)
         self.dropout_embed = nn.Dropout(p=.1)
         self._initialize_weights()
