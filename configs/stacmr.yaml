@@ -4,7 +4,7 @@ DATASET:
 
     FEATURE_DATASET:
         TYPE: OcrFeatureDataset
-        BATCH_SIZE: 64
+        BATCH_SIZE: 32
         WORKERS: 0
         FEATURE_PATH:
             FEATURES: data/features/vinvl_vinvl
@@ -21,7 +21,7 @@ DATASET:
             PADDING_INDEX: 0
     DICT_DATASET:
         TYPE: OcrDictionaryDataset
-        BATCH_SIZE: 64
+        BATCH_SIZE: 32
         WORKERS: 0
         FEATURE_PATH:
             FEATURES: data/features/vinvl_vinvl
@@ -65,15 +65,15 @@ DATASET:
         TEST: data/features/vitextcaps_test.json
 TRAINING:
     CHECKPOINT_PATH: saved_models
-    LEARNING_RATE: 0.0004
+    LEARNING_RATE: 0.0008
     LR_UPDATE: 15
     GRAD_CLIP: 1.
     RL_LEARNING_RATE: 0.000005
-    WARMUP: 1500
+    WARMUP: 2500
     SCORE: CIDEr
     TRAINING_BEAM_SIZE: 1
     EVALUATING_BEAM_SIZE: 1
-    PATIENCE: 10
+    PATIENCE: 5
 
 MODEL:
     ARCHITECTURE: VSRN
