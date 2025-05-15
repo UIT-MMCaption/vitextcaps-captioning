@@ -276,10 +276,10 @@ def is_Vietnamese(word: str) -> tuple[bool, tuple]:
         "giêng": "giiêng", # giếng after being removed the tone
         "giêt": "giiêt",   # giết after being removed the tone
         "giêc": "giiêc",   # giếc (diếc) after being removed the tone
-        "gi": "gii"        # gì after removing the tone,
+        "gi": "gii",      # gì after removing the tone,
         "trròn": "tròn",   # tròn after removing the tone,
         "khhung": "khung", # khung after removing the tone,
-        "cđã": "đã"     # đã after removing the tone,
+        "cđã": "đã",    # đã after removing the tone,
         "luạt": "luật", # luật after removing the tone,
     }
 
