@@ -1,3 +1,4 @@
+%%writefile /content/vitextcaps-captioning/tasks/training_viword_task.py
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -15,28 +16,67 @@ from shutil import copyfile
 import json
 from builders.task_builder import META_TASK
 from torch.optim.lr_scheduler import LambdaLR
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
 logger = setup_logger()
 
-class BCEWithMaskLogitsLoss(nn.Module):
-    def __init__(self, ignore_index=0):
+class CustomLoss(nn.Module):
+    def __init__(self, vocab, padding_idx=0):
         super().__init__()
+        self.tokenizer = GPT2Tokenizer.from_pretrained('NlpHUST/gpt2-vietnamese', force_download=True)
+        
+        if self.tokenizer.pad_token is None:
+             self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        self.reward_model = GPT2LMHeadModel.from_pretrained('NlpHUST/gpt2-vietnamese', force_download=True)
 
-        self.ignore_index = ignore_index
+        if len(self.tokenizer) > self.reward_model.get_input_embeddings().num_embeddings:
+             self.reward_model.resize_token_embeddings(len(self.tokenizer))
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor):
-        loss_mask = (target == self.ignore_index)
+        self.loss_fn = nn.CrossEntropyLoss(ignore_index=padding_idx)
+        self.vocab = vocab
 
-        source = torch.ones_like(input)
-        scattered_target = torch.zeros_like(input)
-        scattered_target.scatter_(dim=-1, index=target.unsqueeze(-1), src=source)
+        # Get the maximum sequence length from the reward model's configuration
+        self.max_seq_length = self.reward_model.config.max_position_embeddings
 
-        losses = F.binary_cross_entropy_with_logits(input, scattered_target, reduction="none")
-        losses = losses.masked_fill(loss_mask.unsqueeze(-1), value=0)
 
-        count = torch.max(torch.sum(loss_mask), torch.ones((1, )).to(loss_mask.device))
-        loss = torch.sum(losses) / count
+        for param in self.reward_model.parameters():
+            param.requires_grad = False
 
-        return loss
+
+        self.reward_model.eval() # Set to evaluation mode (disables dropout, batchnorm updates, etc.)
+
+
+    def forward(self, logits, answer_tokens, lambda_=0.1):
+        
+        padded_answer_tokens = F.pad(answer_tokens.type(torch.long), (0, 0, 0, 410 - answer_tokens.shape[1])).to(logits.device)
+        loss = self.loss_fn(logits.view(-1, logits.shape[-1]), padded_answer_tokens.view(-1))
+
+        # Decode the generated logits into a list of word strings (one for each item in the batch)
+        word_strings = self.vocab.decode_batch_caption(logits.argmax(dim=-1),
+                                            join_words=True)
+        # Tokenize the generated word strings (passing a list of strings)
+        # Add padding=True to explicitly handle padding for the batch
+        tokenized_outputs = self.tokenizer(word_strings,
+                                           return_tensors='pt',
+                                           padding=True, # Explicitly enable padding
+                                           truncation=True,
+                                           max_length=self.max_seq_length)
+
+        input_ids = tokenized_outputs['input_ids'].to(logits.device)
+        attention_mask = tokenized_outputs['attention_mask'].to(logits.device)
+        
+        max_len_in_batch = input_ids.shape[1]
+        position_ids = torch.arange(0, max_len_in_batch, dtype=torch.long, device=logits.device).unsqueeze(0).expand_as(input_ids)
+
+        # Calculate reward loss using the reward model
+        # The loss returned by the reward model is the average negative log-likelihood over the batch and sequence length
+        outputs = self.reward_model(input_ids, attention_mask=attention_mask, position_ids=position_ids, labels=input_ids)
+
+        reward_loss_avg_nll_batch = outputs.loss
+
+        # minimize `loss + lambda_ * reward_loss_avg_nll_batch`.
+        total_loss = loss + lambda_ * reward_loss_avg_nll_batch
+
+        return total_loss
 
 @META_TASK.register()
 class TrainingViWord(OpenEndedTask):
@@ -45,7 +85,8 @@ class TrainingViWord(OpenEndedTask):
         self.scheduler = LambdaLR(self.optim, self.lambda_lr)
         # self.loss_fn = BCEWithMaskLogitsLoss(ignore_index=self.vocab.padding_idx)
         # self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
-        self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+        # self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
+        self.loss_fn = CustomLoss(self.vocab).to('cuda')
         self.delta = config.TRAINING.AUX_LOSS_COEF
 
     def create_dict_dataloaders(self, config):
@@ -72,38 +113,30 @@ class TrainingViWord(OpenEndedTask):
 
     def evaluate_loss(self, dataloader):
         self.model.eval()
-        # self.model.train()
+        self.model.train()
         running_loss = .0
         with tqdm(desc='Epoch %d - Validation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
-            with torch.no_grad():
-                for it, items in enumerate(dataloader):
-                    items = items.to(self.device)
-                    with torch.no_grad():
-                        results = self.model(items)
+            for it, items in enumerate(dataloader):
+                items = items.to(self.device)
+                with torch.no_grad():
+                    results = self.model(items)
+                out = results["scores"]
 
-                    out = results["scores"].contiguous()
-                    out = F.log_softmax(out, dim=-1)
+                shifted_right_answer_tokens = items.shifted_right_answer_tokens
 
-                    shifted_right_answer_tokens = items.shifted_right_answer_tokens
+                shifted_right_answer_tokens = F.pad(shifted_right_answer_tokens, (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                loss = self.loss_fn(out, shifted_right_answer_tokens.type(torch.long))
+                
+                running_loss += loss.item()
 
-                    answer_tokens = torch.stack([
-                                        F.pad(shifted_right_answer_tokens[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
-                                        for i in range(shifted_right_answer_tokens.size(0))
-                                    ])
-                    
-                    loss_i = self.loss_fn(out.view(-1, out.shape[-1]), answer_tokens.type(torch.long).view(-1))
-                    running_loss += loss_i.item()
-                        
-                    
-                    pbar.set_postfix(loss=running_loss / (it + 1))
-                    pbar.update()
-
+                pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
+                pbar.update()
         val_loss = running_loss / len(dataloader)
-
+        self.model.eval()
         return val_loss
 
     def evaluate_metrics(self, dataloader):
-        self.model.eval()
+        self.model.train()
         gens = {}
         gts = {}
         with tqdm(desc='Epoch %d - Evaluation' % self.epoch, unit='it', total=len(dataloader)) as pbar:
@@ -136,67 +169,22 @@ class TrainingViWord(OpenEndedTask):
                 items = items.to(self.device)
                 results = self.model(items)
                 out = results["scores"]
-                
+
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                total_loss  = 0.0
-                loss_tensor = torch.tensor(0.0, device=self.device)
-                
-                # IF using multiple heads
-                if len(self.model.mtp_heads) > 1:
-                    out = [F.log_softmax(out[i].contiguous(), dim=-1) for i in range(len(out))]
-                    for i, (head, pred) in enumerate(zip(self.model.mtp_heads, out)):
-                        shifted_right_answer_tokens_i = shifted_right_answer_tokens[:, i:, :] # Shift answer tokens
-                        answer_tokens = torch.stack([
-                                            F.pad(shifted_right_answer_tokens_i[i], (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens_i.shape[1]))
-                                            for i in range(shifted_right_answer_tokens_i.size(0))
-                                        ])
-                        
-                        loss_i = self.loss_fn(pred.view(-1, pred.shape[-1]), answer_tokens.type(torch.long).view(-1))
-                        if i == 0:
-                            delta = 1
-                        else:
-                            delta = self.delta
-                        loss_tensor += delta * loss_i
-                        total_loss += delta * loss_i.item()
-                else:
-                    out = F.log_softmax(out.contiguous(), dim=-1)
-                    
-                    shifted_right_answer_tokens = F.pad(shifted_right_answer_tokens, (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
-                    loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.type(torch.long).view(-1))
-                    loss_tensor += loss
-                    total_loss += loss.item()
-                
-                loss_tensor.backward()
+
+                shifted_right_answer_tokens = F.pad(shifted_right_answer_tokens, (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
+                loss = self.loss_fn(out, shifted_right_answer_tokens.type(torch.long))
+
+                loss.backward()
                 self.optim.step()
-                running_loss += total_loss
+                running_loss += loss.item()
+
                 pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
                 pbar.update()
                 self.scheduler.step()
-    
-    def start(self, epochs=10):
-        if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
-            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
-            best_val_score = checkpoint["best_val_score"]
-            patience = checkpoint["patience"]
-            self.epoch = checkpoint["epoch"] + 1
-            self.optim.load_state_dict(checkpoint['optimizer'])
-            self.scheduler.load_state_dict(checkpoint['scheduler'])
-        
-        while self.epoch < epochs:
-            self.train()
-            self.epoch+=1
-        
-            # scores = self.evaluate_metrics(self.dev_dict_dataloader)
-            # logger.info("Validation scores %s", scores)
-            # val_score = scores[self.score]
 
-            self.save_checkpoint({
-                    'best_val_score': 0,
-                    'patience': 0
-                })
-
-    # def start(self):
+    # def start(self, epochs=10):
     #     if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
     #         checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
     #         best_val_score = checkpoint["best_val_score"]
@@ -204,47 +192,68 @@ class TrainingViWord(OpenEndedTask):
     #         self.epoch = checkpoint["epoch"] + 1
     #         self.optim.load_state_dict(checkpoint['optimizer'])
     #         self.scheduler.load_state_dict(checkpoint['scheduler'])
-    #     else:
-    #         best_val_score = .0
-    #         patience = 0
 
-    #     while True:
+    #     while self.epoch < epochs:
     #         self.train()
-    #         self.evaluate_loss(self.dev_dataloader)
 
-    #         # val scores
-    #         scores = self.evaluate_metrics(self.dev_dict_dataloader)
-    #         logger.info("Validation scores %s", scores)
-    #         val_score = scores[self.score]
-
-    #         # Prepare for next epoch
-    #         best = False
-    #         if val_score > best_val_score:
-    #             best_val_score = val_score
-    #             patience = 0
-    #             best = True
-    #         else:
-    #             patience += 1
-
-    #         exit_train = False
-
-    #         if patience == self.patience:
-    #             logger.info('patience reached.')
-    #             exit_train = True
+    #         # scores = self.evaluate_metrics(self.dev_dict_dataloader)
+    #         # logger.info("Validation scores %s", scores)
+    #         # val_score = scores[self.score]
 
     #         self.save_checkpoint({
-    #             'best_val_score': best_val_score,
-    #             'patience': patience
-    #         })
+    #                 'best_val_score': 0,
+    #                 'patience': 0
+    #             })
 
-    #         if best:
-    #             copyfile(os.path.join(self.checkpoint_path, "last_model.pth"),
-    #                      os.path.join(self.checkpoint_path, "best_model.pth"))
+    def start(self):
+        if os.path.isfile(os.path.join(self.checkpoint_path, "last_model.pth")):
+            checkpoint = self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
+            best_val_score = checkpoint["best_val_score"]
+            patience = checkpoint["patience"]
+            self.epoch = checkpoint["epoch"] + 1
+            self.optim.load_state_dict(checkpoint['optimizer'])
+            self.scheduler.load_state_dict(checkpoint['scheduler'])
+        else:
+            best_val_score = .0
+            patience = 0
 
-    #         if exit_train:
-    #             break
+        while True:
+            self.train()
+            self.evaluate_loss(self.dev_dataloader)
 
-    #         self.epoch += 1
+            # val scores
+            scores = self.evaluate_metrics(self.dev_dict_dataloader)
+            logger.info("Validation scores %s", scores)
+            val_score = scores[self.score]
+
+            # Prepare for next epoch
+            best = False
+            if val_score > best_val_score:
+                best_val_score = val_score
+                patience = 0
+                best = True
+            else:
+                patience += 1
+
+            exit_train = False
+
+            if patience == self.patience:
+                logger.info('patience reached.')
+                exit_train = True
+
+            self.save_checkpoint({
+                'best_val_score': best_val_score,
+                'patience': patience
+            })
+
+            if best:
+                copyfile(os.path.join(self.checkpoint_path, "last_model.pth"),
+                         os.path.join(self.checkpoint_path, "best_model.pth"))
+
+            if exit_train:
+                break
+
+            self.epoch += 1
 
 
     def get_predictions(self):
@@ -254,7 +263,7 @@ class TrainingViWord(OpenEndedTask):
 
         self.load_checkpoint(os.path.join(self.checkpoint_path, "last_model.pth"))
 
-        self.model.eval()
+        self.model.train()
         results = []
         overall_gens = {}
         overall_gts = {}
