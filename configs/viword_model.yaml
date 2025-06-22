@@ -69,7 +69,7 @@ TRAINING:
 
 MODEL:
   ARCHITECTURE: VIWORD_MODEL
-  NAME: viword_vinvl_swimspotter_
+  NAME: viword_vinvl_swimspotter
   DEVICE: cpu
   D_MODEL: 768
 

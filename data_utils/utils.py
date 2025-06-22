@@ -91,6 +91,7 @@ def preprocess_sentence(sentence: str, tokenizer: str = None):
     sentence = re.sub(r"\$", " ", sentence)
     sentence = re.sub(r"\&", " ", sentence)
     sentence = re.sub(r"\*", " ", sentence)
+    # sentence = re.sub(r"(\d)([a-zA-Z])", r"\1 \2", metric)
     # tokenize the sentence
     if tokenizer is not None:
         tokenizer = get_tokenizer(tokenizer)

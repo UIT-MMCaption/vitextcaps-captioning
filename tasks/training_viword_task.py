@@ -19,61 +19,35 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
 logger = setup_logger()
 
 class CustomLoss(nn.Module):
-    def __init__(self, vocab, padding_idx=0):
+    def __init__(self, ignore_index):
         super().__init__()
-        self.tokenizer = GPT2Tokenizer.from_pretrained('NlpHUST/gpt2-vietnamese', force_download=True)
-        
-        if self.tokenizer.pad_token is None:
-             self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        self.reward_model = GPT2LMHeadModel.from_pretrained('NlpHUST/gpt2-vietnamese', force_download=True)
 
-        if len(self.tokenizer) > self.reward_model.get_input_embeddings().num_embeddings:
-             self.reward_model.resize_token_embeddings(len(self.tokenizer))
+        self.ignore_index = ignore_index
 
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=padding_idx)
-        self.vocab = vocab
+    def forward(self, logits, targets):
+        losses = []
+        print(logits.shape)
+        B, S, _, V = logits.shape
 
-        # Get the maximum sequence length from the reward model's configuration
-        self.max_seq_length = self.reward_model.config.max_position_embeddings
+        logit_flat = logits.view(B*S, _, V)
+        target_flat = targets.view(B*S, _)
 
+        for i in range(4):
+            logits_i = logit_flat[:, i, :]
+            target_i = target_flat[:, i]
 
-        for param in self.reward_model.parameters():
-            param.requires_grad = False
+            ignore_index_i = torch.tensor(self.ignore_index[i], device=targets.device)
+            valid_mask = ~torch.isin(target_i, ignore_index_i)  # handle multiple index
+            logits_valid = logits_i[valid_mask]
+            target_valid = target_i[valid_mask]
 
+            log_probs = logits_valid - logits_valid.logsumexp(dim=1, keepdim=True)
+            loss_i = -log_probs[torch.arange(logits_valid.size(0)), target_valid]
 
-        self.reward_model.eval() # Set to evaluation mode (disables dropout, batchnorm updates, etc.)
+            mean_loss_i = loss_i.mean() if loss_i.numel() > 0 else torch.tensor(0.0, device=logits.device)
+            losses.append(mean_loss_i)
 
-
-    def forward(self, logits, answer_tokens, lambda_=0.1):
-        
-        padded_answer_tokens = F.pad(answer_tokens.type(torch.long), (0, 0, 0, 410 - answer_tokens.shape[1])).to(logits.device)
-        loss = self.loss_fn(logits.view(-1, logits.shape[-1]), padded_answer_tokens.view(-1))
-
-        # Decode the generated logits into a list of word strings (one for each item in the batch)
-        word_strings = self.vocab.decode_batch_caption(logits.argmax(dim=-1),
-                                            join_words=True)
-        # Tokenize the generated word strings (passing a list of strings)
-        # Add padding=True to explicitly handle padding for the batch
-        tokenized_outputs = self.tokenizer(word_strings,
-                                           return_tensors='pt',
-                                           padding=True, # Explicitly enable padding
-                                           truncation=True,
-                                           max_length=self.max_seq_length)
-
-        input_ids = tokenized_outputs['input_ids'].to(logits.device)
-        attention_mask = tokenized_outputs['attention_mask'].to(logits.device)
-        
-        max_len_in_batch = input_ids.shape[1]
-        position_ids = torch.arange(0, max_len_in_batch, dtype=torch.long, device=logits.device).unsqueeze(0).expand_as(input_ids)
-
-        # Calculate reward loss using the reward model
-        # The loss returned by the reward model is the average negative log-likelihood over the batch and sequence length
-        outputs = self.reward_model(input_ids, attention_mask=attention_mask, position_ids=position_ids, labels=input_ids)
-
-        reward_loss_avg_nll_batch = outputs.loss
-
-        # minimize `loss + lambda_ * reward_loss_avg_nll_batch`.
-        total_loss = loss + lambda_ * reward_loss_avg_nll_batch
+        total_loss = sum(losses)
 
         return total_loss
 
@@ -82,11 +56,8 @@ class TrainingViWord(OpenEndedTask):
     def __init__(self, config):
         super().__init__(config)
         self.scheduler = LambdaLR(self.optim, self.lambda_lr)
-        # self.loss_fn = BCEWithMaskLogitsLoss(ignore_index=self.vocab.padding_idx)
-        # self.loss_fn = nn.CrossEntropyLoss(ignore_index=self.vocab.padding_idx)
-        # self.loss_fn = NLLLoss(ignore_index=self.vocab.padding_idx)
-        self.loss_fn = CustomLoss(self.vocab).to('cuda')
-        self.delta = config.TRAINING.AUX_LOSS_COEF
+        self.loss_fn = CustomLoss(ignore_index=self.vocab.ignore_index).to('cuda')
+
 
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
@@ -125,7 +96,7 @@ class TrainingViWord(OpenEndedTask):
 
                 shifted_right_answer_tokens = F.pad(shifted_right_answer_tokens, (0, 0, 0, self.model.max_iter - shifted_right_answer_tokens.shape[1]))
                 loss = self.loss_fn(out, shifted_right_answer_tokens.type(torch.long))
-                
+
                 running_loss += loss.item()
 
                 pbar.set_postfix(loss=running_loss / (it + 1), refresh=True)
@@ -218,7 +189,7 @@ class TrainingViWord(OpenEndedTask):
 
         while True:
             self.train()
-            self.evaluate_loss(self.dev_dataloader)
+            # self.evaluate_loss(self.dev_dataloader)
 
             # val scores
             scores = self.evaluate_metrics(self.dev_dict_dataloader)

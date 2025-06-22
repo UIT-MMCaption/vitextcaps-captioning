@@ -24,8 +24,31 @@ class ViWordVocab(Vocab):
             tok: i for i, tok in enumerate(self.specials + phonemes)
         }
 
+        onsets = ['ngh', 'tr', 'th', 'ph', 'nh', 'ng', 'kh', 
+              'gi', 'gh', 'ch', 'q', 'đ', 'x', 'v', 't', 
+              's', 'r', 'n', 'm', 'l', 'k', 'h', 'g', 'd', 
+              'c', 'b']
+        medial = ['o', 'u']
+        nucleuses = ['oo', 'ươ', 'ưa', 'uô', 'ua', 'iê', 'yê', 
+                 'ia', 'ya', 'e', 'ê', 'u', 'ư', 'ô', 'i', 
+                 'y', 'o', 'ơ', 'â', 'a', 'o', 'ă']
+        codas = ['ng', 'nh', 'ch', 'u', 'n', 'o', 'p', 'c', 'm', 'y', 'i', 't']
+        
+        onsets_idx = [self.stoi[char] for char in onsets]
+        medial_idx = [self.stoi[char] for char in medial]
+        nucleuses_idx = [self.stoi[char] for char in nucleuses]
+        codas_idx = [self.stoi[char] for char in codas]
+
         # only padding token is not allowed to be shown
         self.specials = [self.padding_token]
+
+        all_idx = list(self.stoi.values())
+        onset_ignore = list(set(all_idx) - set(onsets_idx))
+        medial_ignore = list(set(all_idx) - set(medial_idx))
+        nucleuses_ignore = list(set(all_idx) - set(onsets_idx))
+        codas_ignore = list(set(all_idx) - set(codas_idx))
+
+        self.ignore_index = [onset_ignore, medial_ignore, nucleuses_ignore, codas_ignore]
 
     def initialize_special_tokens(self, config) -> None:
         self.padding_token = config.PAD_TOKEN
