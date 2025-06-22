@@ -27,7 +27,7 @@ class ViWordVocab(Vocab):
         onsets = ['ngh', 'tr', 'th', 'ph', 'nh', 'ng', 'kh', 
               'gi', 'gh', 'ch', 'q', 'đ', 'x', 'v', 't', 
               's', 'r', 'n', 'm', 'l', 'k', 'h', 'g', 'd', 
-              'c', 'b']
+              'c', 'b', '<unk>']
         medial = ['o', 'u']
         nucleuses = ['oo', 'ươ', 'ưa', 'uô', 'ua', 'iê', 'yê', 
                  'ia', 'ya', 'e', 'ê', 'u', 'ư', 'ô', 'i', 

@@ -15,7 +15,7 @@ from shutil import copyfile
 import json
 from builders.task_builder import META_TASK
 from torch.optim.lr_scheduler import LambdaLR
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
+from builders.vocab_builder import build_vocab
 logger = setup_logger()
 
 class CustomLoss(nn.Module):
@@ -56,8 +56,9 @@ class TrainingViWord(OpenEndedTask):
     def __init__(self, config):
         super().__init__(config)
         self.scheduler = LambdaLR(self.optim, self.lambda_lr)
+        self.vocab = build_vocab(config.DATASET.VOCAB)
         self.loss_fn = CustomLoss(ignore_index=self.vocab.ignore_index).to('cuda')
-
+        
 
     def create_dict_dataloaders(self, config):
         # creating dictionary iterable-dataset data loader
