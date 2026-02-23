@@ -75,12 +75,24 @@ class OcrFeatureDataset(FeatureDataset):
         keys = ["det_features", "rec_features", "texts", "boxes"]
         for key in keys:
             features[key] = features[key][:ocr_nums]
+
+        # OCR confidence scores from SwinTextSpotter
+        ocr_scores = features.get("scores", [0.0] * ocr_nums)
+        if isinstance(ocr_scores, torch.Tensor):
+            ocr_scores = ocr_scores[:ocr_nums]
+        else:
+            ocr_scores = ocr_scores[:ocr_nums]
+            ocr_scores = torch.tensor(ocr_scores, dtype=torch.float32)
+
+        ocr_scores = ocr_scores.unsqueeze(-1)  # (num_ocr, 1) for collation
+
         return {
             "ocr_det_features": features["det_features"],
             "ocr_rec_features": features["rec_features"],
             "ocr_texts": features["texts"],
             "ocr_boxes": features["boxes"],
-            "ocr_fasttext_features": ocr_fasttext_features,  # Thêm đặc trưng FastText
+            "ocr_fasttext_features": ocr_fasttext_features,
+            "ocr_scores": ocr_scores,
         }
         
     def load_edge_features(self, image_id: int) -> Dict[str, Any]:
@@ -204,12 +216,24 @@ class OcrDictionaryDataset(DictionaryDataset):
         keys = ["det_features", "rec_features", "texts", "boxes"]
         for key in keys:
             features[key] = features[key][:ocr_nums]
+
+        # OCR confidence scores from SwinTextSpotter
+        ocr_scores = features.get("scores", [0.0] * ocr_nums)
+        if isinstance(ocr_scores, torch.Tensor):
+            ocr_scores = ocr_scores[:ocr_nums]
+        else:
+            ocr_scores = ocr_scores[:ocr_nums]
+            ocr_scores = torch.tensor(ocr_scores, dtype=torch.float32)
+
+        ocr_scores = ocr_scores.unsqueeze(-1)  # (num_ocr, 1) for collation
+
         return {
             "ocr_det_features": features["det_features"],
             "ocr_rec_features": features["rec_features"],
             "ocr_texts": features["texts"],
             "ocr_boxes": features["boxes"],
-            "ocr_fasttext_features": ocr_fasttext_features,  # Thêm đặc trưng FastText
+            "ocr_fasttext_features": ocr_fasttext_features,
+            "ocr_scores": ocr_scores,
         }
         
     def load_edge_features(self, image_id: int) -> Dict[str, Any]:

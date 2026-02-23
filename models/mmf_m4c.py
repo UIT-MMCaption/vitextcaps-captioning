@@ -348,6 +348,9 @@ class MMT(BertPreTrainedModel):
         # mask = mask.float()
         mask = generate_sequential_mask(dec_max_num)
         extended_attention_mask[:, :, -dec_max_num:, -dec_max_num:] = mask
+        # FIX: Block encoding->decoder attention (proper encoder-decoder masking)
+        enc_len = txt_max_num + obj_max_num + ocr_max_num
+        extended_attention_mask[:, :, :enc_len, -dec_max_num:] = -10e4
 
         # flip the mask, so that invalid attention pairs have -10000.
         assert not extended_attention_mask.requires_grad

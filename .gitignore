@@ -1,6 +1,5 @@
 .vector_cache
 features
-saved_models
 images
 test
 data
@@ -18,3 +17,25 @@ test.py
 test_stacmr.py
 test_mma_sr.py
 *.zip
+
+# SLURM logs
+slurm_logs/
+logs/
+
+# Root-level .py files (train.py already tracked, keep it)
+/*.py
+/*.sh
+!train.py
+
+# Misc files
+*.bak
+*.broken
+predictions_sample.txt
+
+# saved_models: ignore all except test_results.json
+saved_models/**
+!saved_models/
+!saved_models/*/
+!saved_models/*/test_results.json
+
+# analysis_output: ignore json (already by *.json), keep figures/latex

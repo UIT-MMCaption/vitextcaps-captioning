@@ -69,6 +69,14 @@ class TrainingBUTDMMF(OpenEndedTask):
             collate_fn=collate_fn
         )
 
+    def _clamp_targets(self, targets):
+        """Clamp target token indices to valid vocab range."""
+        targets = targets.clone()
+        invalid_mask = (targets >= len(self.vocab)) | (targets < 0)
+        if invalid_mask.any():
+            targets[invalid_mask] = self.vocab.padding_idx
+        return targets
+
     def evaluate_loss(self, dataloader):
         # self.model.eval()
         self.model.train()
@@ -83,7 +91,7 @@ class TrainingBUTDMMF(OpenEndedTask):
                     out = results["scores"].contiguous()
                     out = F.log_softmax(out, dim=-1)
 
-                    shifted_right_answer_tokens = items.shifted_right_answer_tokens
+                    shifted_right_answer_tokens = self._clamp_targets(items.shifted_right_answer_tokens)
                     loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
                     this_loss = loss.item()
                     running_loss += this_loss
@@ -132,14 +140,8 @@ class TrainingBUTDMMF(OpenEndedTask):
 
                 shifted_right_answer_tokens = items.shifted_right_answer_tokens
                 self.optim.zero_grad()
-                # loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_right_answer_tokens.view(-1))
-                shifted_target = shifted_right_answer_tokens.clone()  # Tạo bản sao
+                shifted_target = self._clamp_targets(shifted_right_answer_tokens)
 
-                invalid_mask = (shifted_target >= len(self.vocab)) | (shifted_target < 0)
-                if invalid_mask.any():
-                    shifted_target[invalid_mask] = 3
-
-                # Đảm bảo rằng cả out và shifted_target đều cùng device.
                 loss = self.loss_fn(out.view(-1, out.shape[-1]), shifted_target.view(-1))
                 loss.backward()
 
